@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KORE AI | Your Healing Journey</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+    <style>
+        :root {
+            --kore-brand: #C17F73; /* The Coral from your logo */
+            --kore-bg: #F4F1EA;    /* The warm beige/cream from your logo */
+            --kore-text: #4A443F;
+            --white: #FFFFFF;
+        }
+
+        body {
+            background-color: var(--kore-bg);
+            color: var(--kore-text);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 50px;
+        }
+
+        header {
+            width: 100%;
+            padding: 40px 0;
+            text-align: center;
+            background: linear-gradient(to bottom, #E8E2D6, var(--kore-bg));
+        }
+
+        h1 { font-size: 3rem; margin: 0; letter-spacing: 4px; color: var(--kore-brand); }
+        .tagline { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; opacity: 0.8; }
+
+        /* Navigation for Levels */
+        .level-nav {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .level-btn {
+            background: transparent;
+            border: 1px solid var(--kore-brand);
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            color: var(--kore-brand);
+            font-weight: bold;
+        }
+
+        .level-btn.active {
+            background: var(--kore-brand);
+            color: var(--white);
+        }
+
+        .main-app {
+            position: relative;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: #000;
+        }
+
+        video { width: 100%; transform: scaleX(-1); display: block; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+
+        .coach-panel {
+            width: 90%;
+            max-width: 600px;
+            background: var(--white);
+            margin-top: -30px;
+            z-index: 10;
+            border-radius: 25px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        .btn-start {
+            background: var(--kore-brand);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .exercise-list { text-align: left; margin: 20px 0; }
+        .exercise-item { padding: 10px; border-bottom: 1px solid #EEE; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>KORE</h1>
+        <div class="tagline">Maternal Strength • Digitally Restored</div>
+    </header>
+
+    <div class="level-nav">
+        <button class="level-btn active" onclick="setLevel('Beginner')">Beginner</button>
+        <button class="level-btn" onclick="setLevel('Intermediate')">Intermediate</button>
+        <button class="level-btn" onclick="setLevel('Advanced')">Advanced</button>
+    </div>
+
+    <div class="main-app">
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="output"></canvas>
+    </div>
+
+    <div class="coach-panel">
+        <h2 id="current-ex">Ready to begin?</h2>
+        <div id="instruction">Select your level and let's start.</div>
+        <button class="btn-start" onclick="startWorkout()">Start 10-Min Beginner Flow</button>
+        
+        <div class="exercise-list" id="list-display">
+            </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('output');
+        const ctx = canvas.getContext('2d');
+        const exTitle = document.getElementById('current-ex');
+        const instruction = document.getElementById('instruction');
+
+        let detector;
+        let currentLevel = "Beginner";
+        
+        const database = {
+            Beginner: ["Breath Work", "Core Engagement", "Heel Slides", "Pelvic Tilts", "Knee Fallouts", "Cat-Cow", "Glute Bridges", "Wall Sits", "Side Lying Leg Lifts", "Seated Marches"],
+            Intermediate: ["Dead Bug", "Bird Dog", "Modified Side Plank", "Single Leg Bridge", "Bear Crawl Hold", "Toe Taps", "Plank on Knees", "Leg Slides with Lift", "Standing Core Twist", "Squats with Core Engagement"],
+            Advanced: ["Full Side Plank", "Plank Taps", "Heel Drops", "Mountain Climbers", "Leg Circles", "Walking Lunges", "Plank to Down Dog", "Reverse Crunches", "Flutter Kicks", "Bird Dog Crunch"]
+        };
+
+        async function init() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            detector = await pose_detection.createDetector(pose_detection.SupportedModels.MoveNet);
+            updateList();
+            render();
+        }
+
+        function setLevel(lvl) {
+            currentLevel = lvl;
+            document.querySelectorAll('.level-btn').forEach(b => b.classList.toggle('active', b.innerText === lvl));
+            updateList();
+            speak(`Loading ${lvl} exercises.`);
+        }
+
+        function updateList() {
+            const list = document.getElementById('list-display');
+            list.innerHTML = database[currentLevel].map(ex => `<div class="exercise-item"><span>${ex}</span><small>Target: Core</small></div>`).join('');
+        }
+
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.pitch = 1.1; // Slightly higher for a motherly, soothing tone
+            msg.rate = 0.9;  // Slower pace
+            window.speechSynthesis.speak(msg);
+        }
+
+        async function startWorkout() {
+            const ex = database[currentLevel][0];
+            exTitle.innerText = ex;
+            speak(`Let's start with ${ex}. Breathe in... and out. Hold for 3 seconds. 1. 2. 3. Good job.`);
+        }
+
+        async function render() {
+            if (detector) {
+                const poses = await detector.estimatePoses(video);
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                if (poses[0]) {
+                    poses[0].keypoints.forEach(kp => {
+                        if (kp.score > 0.3) { // Lower threshold for better low-light tracking
+                            ctx.beginPath();
+                            ctx.arc(kp.x, kp.y, 5, 0, 2*Math.PI);
+                            ctx.fillStyle = "#C17F73";
+                            ctx.fill();
+                        }
+                    });
+                }
+            }
+            requestAnimationFrame(render);
+        }
+
+        init();
+    </script>
+</body>
+</html>
