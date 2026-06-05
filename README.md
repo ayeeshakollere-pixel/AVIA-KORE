@@ -1,2 +1,2 @@
-# AVIA-KORE
+# KORE
 a women welness app
