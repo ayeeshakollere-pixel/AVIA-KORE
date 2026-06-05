@@ -636,6 +636,270 @@ const EXERCISE_LEVELS = {
 };
 
 // ── Simulated voice cue hook ───────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  VOICE COACHING SCRIPTS — Plain language, warm, conversational
+// ═══════════════════════════════════════════════════════════════════════════
+// Written for African mothers — no clinical jargon. Body-relatable cues only.
+
+// ── Per-exercise breath coaching scripts ──────────────────────────────────
+// Each exercise has 4–6 cycle lines that loop with realistic rep tempo.
+// Cycle gap = seconds between each cue line. Most reps run 6–8 seconds total.
+const BREATH_COACHING = {
+  "Pelvic Tilts": {
+    cycleGap: 7,
+    cues: [
+      "Breathe in slowly... let your belly soften and rise.",
+      "Now breathe out, gently flatten your lower back into the mat. Beautiful.",
+      "And again — breathe in... soften.",
+      "Breathe out... press your back down, like you're trying to leave a print on the floor.",
+      "One more breath in... fill up.",
+      "Now exhale... and reset. You're doing this perfectly.",
+    ],
+  },
+  "Abdominal Bracing": {
+    cycleGap: 8,
+    cues: [
+      "Take a deep breath in through your nose...",
+      "Now breathe out and gently pull your tummy in — like you're zipping up tight jeans. Hold.",
+      "Two... three... four... five. Release. Beautiful.",
+      "Breathe in again...",
+      "And out, draw it in, hold... two... three... four... five. Let go.",
+      "Your deep tummy muscles are waking up right now. Keep going, my love.",
+    ],
+  },
+  "Supported Heel Slides": {
+    cycleGap: 7,
+    cues: [
+      "Breathe in to prepare...",
+      "Breathe out, gently slide your heel away from you. Slowly.",
+      "Breathe in, and bring it back. Lovely.",
+      "Switch sides. Breathe out... slide it out.",
+      "Breathe in... bring it home.",
+      "Keep your tummy soft and held in throughout, mama. You've got this.",
+    ],
+  },
+  "Low Glute Bridges": {
+    cycleGap: 6,
+    cues: [
+      "Breathe in, get ready.",
+      "Now breathe out and squeeze your bum, lift your hips just a little.",
+      "Hold... two... breathe naturally.",
+      "Breathe in as you lower down slowly. Don't drop.",
+      "Again — breathe out, lift up. Squeeze.",
+      "Breathe in, come back down. You're stronger than you think.",
+    ],
+  },
+  "Modified Dead Bug": {
+    cycleGap: 8,
+    cues: [
+      "Breathe in, arms reach up.",
+      "Breathe out as you lower one arm slowly toward the floor behind you.",
+      "Keep your back pressed down — don't let it lift off the mat.",
+      "Breathe in as you bring the arm back up.",
+      "Switch sides. Breathe out, lower the other arm.",
+      "Slow and steady, mama. This is real work.",
+    ],
+  },
+  "Seated TVA Contractions": {
+    cycleGap: 7,
+    cues: [
+      "Sit up tall, breathe in deeply...",
+      "Breathe out, gently pull your lower tummy in and up — like a soft hug around your waist.",
+      "Hold for five seconds. Two... three... four... five. Release.",
+      "Breathe in again, ribs expanding.",
+      "And out, draw in gently. Don't suck in hard — just a kind hug.",
+      "Beautiful. This is the muscle that holds you together.",
+    ],
+  },
+  "Side-Lying Clamshells": {
+    cycleGap: 5,
+    cues: [
+      "Breathe in.",
+      "Breathe out, slowly open your top knee like a clam shell.",
+      "Keep your hips stacked — don't let them roll back.",
+      "Breathe in, close gently.",
+      "And again — breathe out, open. Breathe in, close.",
+      "Feel your bum muscles working. That's exactly what we want.",
+    ],
+  },
+  // ── Intermediate ──────────────────────────────────────────────────────
+  "Unsupported Heel Slides": {
+    cycleGap: 7,
+    cues: [
+      "Breathe in to set yourself.",
+      "Now breathe out, slide your heel out. Slow as honey.",
+      "Keep your back glued to the mat — no arching.",
+      "Breathe in, slide it back.",
+      "Switch sides. You're doing it perfectly.",
+      "If your back wants to lift, make the slide smaller. Listen to your body.",
+    ],
+  },
+  "Dead Bug (Legs Only)": {
+    cycleGap: 7,
+    cues: [
+      "Knees above your hips. Breathe in.",
+      "Breathe out, lower one foot toward the floor. Just a tap.",
+      "Breathe in, bring it back up.",
+      "Other side — breathe out, lower.",
+      "Breathe in, return.",
+      "Your tummy stays braced the whole time. Beautiful.",
+    ],
+  },
+  "Bird-Dog (Alt. Arm & Leg)": {
+    cycleGap: 8,
+    cues: [
+      "On your hands and knees. Breathe in to centre.",
+      "Breathe out, extend the opposite arm and leg until they're straight.",
+      "Hold three seconds. Don't let your back sag.",
+      "Breathe in, bring them back.",
+      "Switch sides. Breathe out, extend.",
+      "Imagine balancing a cup of tea on your lower back. Steady.",
+    ],
+  },
+  "Bent-Knee Fall Outs": {
+    cycleGap: 6,
+    cues: [
+      "Breathe in.",
+      "Breathe out, slowly drop one knee out to the side.",
+      "Only as far as your hips can stay still. Don't twist.",
+      "Breathe in, bring it back.",
+      "Other side. Slow control.",
+      "Your tummy is doing all the work here, my love.",
+    ],
+  },
+  "Modified Side Plank (Knees)": {
+    cycleGap: 5,
+    cues: [
+      "Breathe steadily — no holding.",
+      "Lift your hips and hold strong.",
+      "Stay long from head to knees. No sagging.",
+      "Breathe in... breathe out... keep going.",
+      "Almost there. You're stronger than you know.",
+      "Beautiful hold. Now release gently.",
+    ],
+  },
+  "Seated Heel Taps": {
+    cycleGap: 4,
+    cues: [
+      "Sit tall, feet lifted.",
+      "Breathe out, tap one heel down.",
+      "Breathe in, lift back.",
+      "Breathe out, tap the other.",
+      "Keep your back long, not hunched.",
+      "You're firing up your deep core. Excellent.",
+    ],
+  },
+  "Wall Squats with TVA Hold": {
+    cycleGap: 8,
+    cues: [
+      "Slide down the wall until your thighs are level.",
+      "Breathe in deeply...",
+      "Breathe out, gently pull your tummy in. Hold five seconds.",
+      "Two... three... four... five. Release.",
+      "Breathe naturally through the squat.",
+      "Slide back up. Beautiful work.",
+    ],
+  },
+  // ── Advanced ──────────────────────────────────────────────────────────
+  "Full Dead Bug (Opp. Arm & Leg)": {
+    cycleGap: 8,
+    cues: [
+      "Breathe in to prepare.",
+      "Breathe out fully — extend opposite arm and leg.",
+      "Don't let your back peel up. Press it down hard.",
+      "Breathe in, bring them home.",
+      "Switch sides. Smooth, controlled.",
+      "This is your strength returning. Feel it.",
+    ],
+  },
+  "Full Bird-Dog": {
+    cycleGap: 8,
+    cues: [
+      "Hands under shoulders, knees under hips.",
+      "Breathe out, extend opposite arm and leg fully.",
+      "Reach long through your fingers and toes. Hold three.",
+      "Breathe in, return.",
+      "Other side, breathe out, extend.",
+      "Stay level. No swaying. Beautiful.",
+    ],
+  },
+  "Full Side Plank (From Feet)": {
+    cycleGap: 5,
+    cues: [
+      "Stack your feet. Lift your hips strong.",
+      "Breathe steadily — short out-breaths every few seconds.",
+      "Stay long. Don't let your hips dip.",
+      "Halfway through. You're doing this.",
+      "Almost there. Hold strong.",
+      "Beautiful — release slowly.",
+    ],
+  },
+  "Elevated Single-Leg Bridges": {
+    cycleGap: 6,
+    cues: [
+      "One leg extended. Breathe in.",
+      "Breathe out, drive your heel down and lift your hips.",
+      "Hold two seconds. Don't let the other hip drop.",
+      "Breathe in, lower with control.",
+      "Again — breathe out, lift.",
+      "Squeeze that bum. Power through.",
+    ],
+  },
+  "Modified Front Plank": {
+    cycleGap: 5,
+    cues: [
+      "Forearms down, knees down.",
+      "Pull your tummy up toward your spine — make a little hollow.",
+      "Breathe short, steady breaths. Never hold.",
+      "Halfway. Stay strong.",
+      "Don't let your hips lift up or sag down. Stay level.",
+      "Almost done. Beautiful.",
+    ],
+  },
+  "Standing Paloff Press": {
+    cycleGap: 6,
+    cues: [
+      "Hold the band at your chest. Breathe in.",
+      "Breathe out, press your hands straight forward. Resist the pull.",
+      "Hold two seconds. Don't let your body twist.",
+      "Breathe in, bring it back.",
+      "Again — slow press out.",
+      "Your core is fighting against rotation. That's the magic.",
+    ],
+  },
+  "Single-Leg Balance + Bracing": {
+    cycleGap: 6,
+    cues: [
+      "Stand on one leg. Soft knee.",
+      "Breathe naturally. Gently pull your tummy in.",
+      "Stay grounded. You can do thirty seconds.",
+      "Halfway. Beautiful balance.",
+      "Almost there.",
+      "Switch legs. You've got this.",
+    ],
+  },
+};
+
+// ── Plain-language posture corrections (warm, body-relatable, no jargon) ─
+const PLAIN_CORRECTIONS = {
+  spineArching: [
+    "Press your lower back down into the mat, mama. Imagine you're trying to squeeze a coin between your back and the floor.",
+    "Your back is lifting a bit — gently push it down flat. There. Much better.",
+    "Soften your back into the mat, my love. Let it melt down.",
+  ],
+  pelvicTilt: [
+    "Your hips are leaning to one side — try to keep them even, like you're lying perfectly flat on a tray.",
+    "Bring your hips back to centre, sweetheart. Even and balanced.",
+    "Don't let one hip drop. Keep them level, both kissing the mat the same way.",
+  ],
+  breathHolding: [
+    "Don't forget to breathe, my love. Open your mouth a little and let the air flow out.",
+    "Keep breathing, mama. Hold your breath, you hold your tension. Let it flow.",
+    "I can hear you holding your breath. Breathe steady — your body needs that air.",
+  ],
+  lowLight: [], // populated dynamically with user name
+};
 // ─────────────────────────────────────────────────────────────────────────────
 // MEDIAPIPE POSE TRACKING — On-device computer vision
 // ─────────────────────────────────────────────────────────────────────────────
@@ -919,17 +1183,18 @@ function usePracticeSession(exercise, userName = "love") {
 
     // ── DETECT ISSUES AND FIRE CORRECTIONS ──────────────────────────────
     let penalty = 0;
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
     // Spine arching: angle drops too low (torso bent backward at hip)
     if (spineAngle < 145) {
       penalty += 20;
-      speakCorrection("spineArching", "Your back is arching slightly, love — gently tilt your pelvis forward to protect your core.");
+      speakCorrection("spineArching", pick(PLAIN_CORRECTIONS.spineArching));
     }
 
     // Pelvic tilt: hips visibly uneven
     if (hipLevelDiff > 0.06) {
       penalty += 15;
-      speakCorrection("pelvicTilt", "Find a neutral pelvis, sweetheart — not arched, not tucked. Just balanced.");
+      speakCorrection("pelvicTilt", pick(PLAIN_CORRECTIONS.pelvicTilt));
     }
 
     // Breath holding: no torso movement for ~2 seconds
@@ -937,7 +1202,7 @@ function usePracticeSession(exercise, userName = "love") {
       breathHoldRef.current++;
       if (breathHoldRef.current > 8) {
         penalty += 12;
-        speakCorrection("breathHolding", "Keep breathing, mama. Release your jaw and breathe steadily.");
+        speakCorrection("breathHolding", pick(PLAIN_CORRECTIONS.breathHolding));
       }
     } else {
       breathHoldRef.current = 0;
@@ -959,12 +1224,13 @@ function usePracticeSession(exercise, userName = "love") {
   // ── FALLBACK: If MediaPipe fails to load, use the simulated tracker ──────
   function startSimulatedFallback() {
     let frame = 0;
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
     const tick = () => {
       frame++;
       setBP(Math.sin(frame / 18) > 0 ? "inhale" : "exhale");
       const r = Math.random();
-      if (r > 0.97) speakCorrection("spineArching", "Your back is arching slightly, love — gently tilt your pelvis forward to protect your core.");
-      if (r < 0.02) speakCorrection("breathHolding", "Keep breathing, mama. Release your jaw and breathe steadily.");
+      if (r > 0.97) speakCorrection("spineArching", pick(PLAIN_CORRECTIONS.spineArching));
+      if (r < 0.02) speakCorrection("breathHolding", pick(PLAIN_CORRECTIONS.breathHolding));
       setScore(Math.max(0, 100 - (r > 0.96 ? 18 : 0)));
     };
     intervalRef.current = setInterval(tick, 200);
@@ -982,23 +1248,43 @@ function usePracticeSession(exercise, userName = "love") {
   // ── EXERCISE TIMER ───────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "active") return;
+
+    // ── BREATH COACHING — Tolani speaks rhythmic cues throughout ────────
+    // Pulls per-exercise script from BREATH_COACHING and loops through cues
+    // at the exercise's natural rep tempo.
+    const breathScript = BREATH_COACHING[exercise.name];
+    let breathTimer = null;
+    let breathCueIndex = 0;
+    if (breathScript) {
+      // First cue 2 seconds in (after countdown ends)
+      const fireBreathCue = () => {
+        const cue = breathScript.cues[breathCueIndex % breathScript.cues.length];
+        speak(cue);
+        breathCueIndex++;
+      };
+      const startDelay = setTimeout(() => {
+        fireBreathCue();
+        breathTimer = setInterval(fireBreathCue, breathScript.cycleGap * 1000);
+      }, 2000);
+      // Cleanup includes startDelay
+      var cleanupBreath = () => { clearTimeout(startDelay); if (breathTimer) clearInterval(breathTimer); };
+    }
+
     const timer = setInterval(() => {
       setElapsed(e => {
         if (e + 1 >= exercise.duration) {
           clearInterval(timer);
+          if (cleanupBreath) cleanupBreath();
           if (intervalRef.current) clearInterval(intervalRef.current);
           setPhase("rest");
           speak("Wonderful. That's one exercise complete. Take a gentle breath.", "high");
           return e + 1;
         }
-        if ((e + 1) === Math.floor(exercise.duration / 2)) {
-          speak("You're doing beautifully. Every small movement is healing your body from within.");
-        }
         return e + 1;
       });
     }, 1000);
-    return () => clearInterval(timer);
-  }, [phase, exercise.duration]);
+    return () => { clearInterval(timer); if (cleanupBreath) cleanupBreath(); };
+  }, [phase, exercise.duration, exercise.name]);
 
   return {
     phase, setPhase, countdown, elapsed, formScore, breathPhase,
