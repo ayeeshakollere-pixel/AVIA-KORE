@@ -710,19 +710,75 @@ function usePracticeSession(exercise, userName = "love") {
   const corrCooldownsRef                = useRef({});
   const breathHoldRef                   = useRef(0);
 
-  // ── BROWSER VOICE FALLBACK (will be replaced by ElevenLabs in Delivery 2) ─
-  const voiceSynth = typeof window !== "undefined" ? window.speechSynthesis : null;
-  const speak = useCallback((text, priority = "normal") => {
+  // ── VOICE ENGINE — ElevenLabs Tolani.kore with browser fallback ──────────
+  // Talks to /api/voice (Vercel serverless function) which proxies ElevenLabs
+  // so the API key NEVER appears in client code. Falls back to browser TTS if
+  // the serverless function fails (offline, error, or running on localhost).
+  const audioRef          = useRef(null);
+  const voiceQueueRef     = useRef([]);
+  const voiceIsSpeakingRef = useRef(false);
+  const voiceSynth        = typeof window !== "undefined" ? window.speechSynthesis : null;
+
+  // Browser voice fallback (only used if ElevenLabs fails)
+  const speakBrowser = useCallback((text) => {
     if (!voiceSynth) return;
-    if (priority === "high") voiceSynth.cancel();
-    else if (voiceSynth.speaking) return; // don't interrupt
+    voiceSynth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 0.88; u.pitch = 1.05; u.volume = 1.0;
     const voices = voiceSynth.getVoices();
     const v = voices.find(v => v.lang.startsWith("en-GB") || v.name.includes("Samantha") || v.name.includes("Karen")) || voices[0];
     if (v) u.voice = v;
     voiceSynth.speak(u);
-  }, []);
+  }, [voiceSynth]);
+
+  // Plays next queued audio
+  const playNextInQueue = useCallback(async () => {
+    if (voiceQueueRef.current.length === 0) { voiceIsSpeakingRef.current = false; return; }
+    voiceIsSpeakingRef.current = true;
+    const text = voiceQueueRef.current.shift();
+    try {
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Voice API non-200");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.src = url;
+      audioRef.current.onended = () => { URL.revokeObjectURL(url); playNextInQueue(); };
+      audioRef.current.onerror = () => { URL.revokeObjectURL(url); playNextInQueue(); };
+      await audioRef.current.play();
+    } catch (err) {
+      // Fallback to browser TTS
+      speakBrowser(text);
+      // Wait roughly enough for the browser voice, then proceed
+      setTimeout(() => playNextInQueue(), Math.min(8000, text.length * 75));
+    }
+  }, [speakBrowser]);
+
+  const speak = useCallback((text, priority = "normal") => {
+    if (!text) return;
+    if (priority === "high") {
+      // Interrupt: stop current audio, clear queue, speak immediately
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+      voiceQueueRef.current = [text];
+      voiceIsSpeakingRef.current = false;
+      voiceSynth?.cancel();
+      playNextInQueue();
+    } else {
+      voiceQueueRef.current.push(text);
+      if (!voiceIsSpeakingRef.current) playNextInQueue();
+    }
+  }, [playNextInQueue, voiceSynth]);
+
+  // Cleanup audio on unmount
+  useEffect(() => () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+    voiceQueueRef.current = [];
+    voiceSynth?.cancel();
+  }, [voiceSynth]);
 
   // Speak a correction respecting per-type cooldown (prevent repeating same cue)
   const speakCorrection = useCallback((type, message) => {
