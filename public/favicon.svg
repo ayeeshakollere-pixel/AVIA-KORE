@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 90">
+  <path d="M 16 86 L 16 36 Q 16 14, 40 14 Q 64 14, 64 36 L 64 86 Z" fill="#EDE0E8" stroke="#6B2D4E" stroke-width="2"/>
+  <text x="40" y="58" font-family="Georgia, serif" font-size="40" font-weight="500" fill="#6B2D4E" text-anchor="middle">K</text>
+  <path d="M 24 72 Q 28 68, 34 68" stroke="#6B8F6B" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="28" cy="70" rx="4.5" ry="2" fill="#6B8F6B" transform="rotate(-30 28 70)"/>
+  <path d="M 56 72 Q 52 68, 46 68" stroke="#6B8F6B" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="52" cy="70" rx="4.5" ry="2" fill="#6B8F6B" transform="rotate(30 52 70)"/>
+</svg>
