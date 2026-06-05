@@ -636,22 +636,86 @@ const EXERCISE_LEVELS = {
 };
 
 // ── Simulated voice cue hook ───────────────────────────────────────────────
-function usePracticeSession(exercise) {
-  const [phase, setPhase]       = useState("countdown");
-  const [countdown, setCount]   = useState(3);
-  const [elapsed, setElapsed]   = useState(0);
-  const [formScore, setScore]   = useState(100);
-  const [breathPhase, setBP]    = useState("inhale");
-  const [correction, setCorr]   = useState(null);
-  const [camGranted, setCam]    = useState(false);
-  const cameraRef               = useRef(null);
-  const streamRef               = useRef(null);
-  const animRef                 = useRef(null);
-  const voiceSynth              = typeof window !== "undefined" ? window.speechSynthesis : null;
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIAPIPE POSE TRACKING — On-device computer vision
+// ─────────────────────────────────────────────────────────────────────────────
+// Loads MediaPipe Pose from the official Google CDN. Runs locally on the user's
+// device — no video frames ever leave the phone. Throttled to ~8 FPS for budget
+// phones. Includes low-light detection via landmark confidence scoring.
 
-  const speak = useCallback((text) => {
+const MP_POSE_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/";
+
+// Landmark indices from MediaPipe Pose (33-point skeleton)
+const MP_LM = {
+  LEFT_SHOULDER: 11, RIGHT_SHOULDER: 12,
+  LEFT_HIP: 23, RIGHT_HIP: 24,
+  LEFT_KNEE: 25, RIGHT_KNEE: 26,
+  NOSE: 0,
+};
+
+// Loads MediaPipe scripts once and caches the Pose constructor
+let _mpPosePromise = null;
+function loadMediaPipePose() {
+  if (_mpPosePromise) return _mpPosePromise;
+  _mpPosePromise = new Promise((resolve, reject) => {
+    if (window.Pose) { resolve(window.Pose); return; }
+    const script = document.createElement("script");
+    script.src = `${MP_POSE_CDN}pose.js`;
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      // Pose attaches to window
+      if (window.Pose) resolve(window.Pose);
+      else reject(new Error("MediaPipe Pose did not initialise."));
+    };
+    script.onerror = () => reject(new Error("Could not load MediaPipe from CDN."));
+    document.head.appendChild(script);
+  });
+  return _mpPosePromise;
+}
+
+// Geometric helper: angle at point B formed by A-B-C (in degrees)
+function angleAt(a, b, c) {
+  const ab = { x: a.x - b.x, y: a.y - b.y };
+  const cb = { x: c.x - b.x, y: c.y - b.y };
+  const dot = ab.x * cb.x + ab.y * cb.y;
+  const magAB = Math.hypot(ab.x, ab.y);
+  const magCB = Math.hypot(cb.x, cb.y);
+  if (magAB === 0 || magCB === 0) return 180;
+  return (Math.acos(Math.min(1, Math.max(-1, dot / (magAB * magCB)))) * 180) / Math.PI;
+}
+
+// Midpoint between two landmarks
+function midpoint(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// usePracticeSession — Main session hook with real AI tracking
+// ─────────────────────────────────────────────────────────────────────────────
+function usePracticeSession(exercise, userName = "love") {
+  const [phase, setPhase]               = useState("countdown");
+  const [countdown, setCount]           = useState(3);
+  const [elapsed, setElapsed]           = useState(0);
+  const [formScore, setScore]           = useState(100);
+  const [breathPhase, setBP]            = useState("inhale");
+  const [correction, setCorr]           = useState(null);
+  const [postureError, setPostureError] = useState(false);
+  const [camGranted, setCam]            = useState(false);
+  const [trackingStatus, setTrackStatus] = useState("loading"); // loading | tracking | low-light | error
+  const cameraRef                       = useRef(null);
+  const streamRef                       = useRef(null);
+  const poseRef                         = useRef(null);
+  const intervalRef                     = useRef(null);
+  const torsoHistoryRef                 = useRef([]);
+  const corrCooldownsRef                = useRef({});
+  const breathHoldRef                   = useRef(0);
+
+  // ── BROWSER VOICE FALLBACK (will be replaced by ElevenLabs in Delivery 2) ─
+  const voiceSynth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  const speak = useCallback((text, priority = "normal") => {
     if (!voiceSynth) return;
-    voiceSynth.cancel();
+    if (priority === "high") voiceSynth.cancel();
+    else if (voiceSynth.speaking) return; // don't interrupt
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 0.88; u.pitch = 1.05; u.volume = 1.0;
     const voices = voiceSynth.getVoices();
@@ -660,73 +724,245 @@ function usePracticeSession(exercise) {
     voiceSynth.speak(u);
   }, []);
 
-  // Camera
+  // Speak a correction respecting per-type cooldown (prevent repeating same cue)
+  const speakCorrection = useCallback((type, message) => {
+    const now = Date.now();
+    if (corrCooldownsRef.current[type] && now - corrCooldownsRef.current[type] < 8000) return;
+    corrCooldownsRef.current[type] = now;
+    setCorr(message);
+    speak(message);
+    setPostureError(true);
+    setTimeout(() => { setCorr(null); setPostureError(false); }, 5000);
+  }, [speak]);
+
+  // ── 1. CAMERA INIT ───────────────────────────────────────────────────────
   useEffect(() => {
-    navigator.mediaDevices?.getUserMedia({ video: { facingMode: "user" }, audio: false })
-      .then(s => { streamRef.current = s; if (cameraRef.current) cameraRef.current.srcObject = s; setCam(true); })
-      .catch(() => setCam(false));
-    return () => { streamRef.current?.getTracks().forEach(t => t.stop()); if (animRef.current) cancelAnimationFrame(animRef.current); };
+    let cleanup = () => {};
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+        streamRef.current = stream;
+        if (cameraRef.current) {
+          cameraRef.current.srcObject = stream;
+          await cameraRef.current.play().catch(() => {});
+        }
+        setCam(true);
+      } catch (err) {
+        setCam(false);
+        setTrackStatus("error");
+      }
+    })();
+    cleanup = () => {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (poseRef.current?.close) poseRef.current.close();
+    };
+    return cleanup;
   }, []);
 
-  // Countdown
+  // ── 2. MEDIAPIPE INIT (runs once camera is ready) ─────────────────────────
+  useEffect(() => {
+    if (!camGranted || phase !== "active") return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setTrackStatus("loading");
+        const Pose = await loadMediaPipePose();
+        if (cancelled) return;
+
+        const pose = new Pose({
+          locateFile: (file) => `${MP_POSE_CDN}${file}`,
+        });
+        pose.setOptions({
+          modelComplexity: 0,         // lite — best for budget phones
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        pose.onResults((results) => {
+          if (cancelled) return;
+          analyzePose(results);
+        });
+
+        poseRef.current = pose;
+        setTrackStatus("tracking");
+
+        // ── 3. THROTTLED PROCESSING LOOP — 8 FPS (~125 ms interval) ─────────
+        // This is far cheaper than processing every frame (~30 FPS) and is
+        // smooth enough for posture detection while preserving battery.
+        intervalRef.current = setInterval(async () => {
+          if (cancelled || !cameraRef.current || cameraRef.current.readyState < 2) return;
+          try {
+            await pose.send({ image: cameraRef.current });
+          } catch (e) {
+            // swallow transient errors — they happen during teardown
+          }
+        }, 125);
+      } catch (err) {
+        if (!cancelled) {
+          setTrackStatus("error");
+          // Fall back to simulated tracking so the demo still works
+          startSimulatedFallback();
+        }
+      }
+    })();
+
+    return () => { cancelled = true; if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [camGranted, phase]);
+
+  // ── 4. POSE ANALYSIS — runs on every MediaPipe result (~8x per second) ───
+  function analyzePose(results) {
+    const lm = results.poseLandmarks;
+
+    // ── LOW-LIGHT / NO-DETECTION FAIL-SAFE ──────────────────────────────
+    // MediaPipe returns null landmarks when it can't detect a body, often
+    // because of poor lighting. Each landmark also has a `visibility` score.
+    if (!lm || lm.length < 29) {
+      handleLowLight();
+      return;
+    }
+
+    // Compute mean visibility of the core landmarks we care about
+    const coreIndices = [MP_LM.LEFT_SHOULDER, MP_LM.RIGHT_SHOULDER, MP_LM.LEFT_HIP, MP_LM.RIGHT_HIP, MP_LM.LEFT_KNEE, MP_LM.RIGHT_KNEE];
+    const meanVis = coreIndices.reduce((s, i) => s + (lm[i]?.visibility || 0), 0) / coreIndices.length;
+
+    if (meanVis < 0.5) {
+      handleLowLight();
+      return;
+    }
+
+    // Tracking is healthy
+    if (trackingStatus !== "tracking") setTrackStatus("tracking");
+    breathHoldRef.current = 0; // reset low-light counter on good detection
+
+    // ── ANGLE CALCULATION: Shoulder → Hip → Knee ────────────────────────
+    // Measures the angle at the hip joint. In a neutral spine, this should
+    // be ~160-180° (a near-straight line from shoulder through hip to knee).
+    // Excessive arching produces a smaller angle (the torso leans back).
+    const midShoulder = midpoint(lm[MP_LM.LEFT_SHOULDER], lm[MP_LM.RIGHT_SHOULDER]);
+    const midHip      = midpoint(lm[MP_LM.LEFT_HIP],      lm[MP_LM.RIGHT_HIP]);
+    const midKnee     = midpoint(lm[MP_LM.LEFT_KNEE],     lm[MP_LM.RIGHT_KNEE]);
+    const spineAngle  = angleAt(midShoulder, midHip, midKnee);
+
+    // ── PELVIC TILT: vertical difference between left and right hip ─────
+    const hipLevelDiff = Math.abs(lm[MP_LM.LEFT_HIP].y - lm[MP_LM.RIGHT_HIP].y);
+
+    // ── BREATHING RHYTHM PROXY: torso height oscillation ────────────────
+    const torsoHeight = Math.abs(midShoulder.y - midHip.y);
+    torsoHistoryRef.current.push(torsoHeight);
+    if (torsoHistoryRef.current.length > 16) torsoHistoryRef.current.shift(); // ~2s @ 8fps
+    const torsoRange = Math.max(...torsoHistoryRef.current) - Math.min(...torsoHistoryRef.current);
+    const isBreathing = torsoRange > 0.008;
+    setBP(torsoHistoryRef.current.length > 1 && torsoHistoryRef.current[torsoHistoryRef.current.length - 1] > torsoHistoryRef.current[0] ? "inhale" : "exhale");
+
+    // ── DETECT ISSUES AND FIRE CORRECTIONS ──────────────────────────────
+    let penalty = 0;
+
+    // Spine arching: angle drops too low (torso bent backward at hip)
+    if (spineAngle < 145) {
+      penalty += 20;
+      speakCorrection("spineArching", "Your back is arching slightly, love — gently tilt your pelvis forward to protect your core.");
+    }
+
+    // Pelvic tilt: hips visibly uneven
+    if (hipLevelDiff > 0.06) {
+      penalty += 15;
+      speakCorrection("pelvicTilt", "Find a neutral pelvis, sweetheart — not arched, not tucked. Just balanced.");
+    }
+
+    // Breath holding: no torso movement for ~2 seconds
+    if (!isBreathing && torsoHistoryRef.current.length === 16) {
+      breathHoldRef.current++;
+      if (breathHoldRef.current > 8) {
+        penalty += 12;
+        speakCorrection("breathHolding", "Keep breathing, mama. Release your jaw and breathe steadily.");
+      }
+    } else {
+      breathHoldRef.current = 0;
+    }
+
+    setScore(Math.max(0, 100 - penalty));
+  }
+
+  // ── LOW-LIGHT HANDLER ────────────────────────────────────────────────────
+  function handleLowLight() {
+    if (trackingStatus !== "low-light") {
+      setTrackStatus("low-light");
+      const msg = `It's a bit dark, ${userName} — try moving to a brighter spot so I can see you clearly.`;
+      // Only speak this once per cooldown window
+      speakCorrection("lowLight", msg);
+    }
+  }
+
+  // ── FALLBACK: If MediaPipe fails to load, use the simulated tracker ──────
+  function startSimulatedFallback() {
+    let frame = 0;
+    const tick = () => {
+      frame++;
+      setBP(Math.sin(frame / 18) > 0 ? "inhale" : "exhale");
+      const r = Math.random();
+      if (r > 0.97) speakCorrection("spineArching", "Your back is arching slightly, love — gently tilt your pelvis forward to protect your core.");
+      if (r < 0.02) speakCorrection("breathHolding", "Keep breathing, mama. Release your jaw and breathe steadily.");
+      setScore(Math.max(0, 100 - (r > 0.96 ? 18 : 0)));
+    };
+    intervalRef.current = setInterval(tick, 200);
+  }
+
+  // ── COUNTDOWN ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (countdown === 3) speak("Take a moment to get into position. Whenever you're ready, let's begin.");
+    if (countdown === 3) speak("Take a moment to get into position. Whenever you're ready, let's begin.", "high");
     if (countdown <= 0) { setPhase("active"); return; }
     const t = setTimeout(() => setCount(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [countdown, phase]);
 
-  // Timer + simulated AI
+  // ── EXERCISE TIMER ───────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "active") return;
-    let frame = 0;
-    const CORRECTIONS = [
-      { type: "spineArching",      msg: "Your back is arching slightly, love — gently tilt your pelvis forward to protect your core.", threshold: 0.96 },
-      { type: "breathHolding",     msg: "Keep breathing, mama. Release your jaw and breathe steadily.",                                threshold: 0.98 },
-      { type: "pelvicTiltForward", msg: "Find a neutral pelvis — not arched, not tucked. Just balanced.",                             threshold: 0.97 },
-    ];
-    const corrCooldowns = {};
-    const aiTick = () => {
-      frame++;
-      const newBreath = Math.sin(frame / 18) > 0 ? "inhale" : "exhale";
-      setBP(newBreath);
-      const r = Math.random();
-      let penalty = 0;
-      CORRECTIONS.forEach(c => {
-        if (r > c.threshold) {
-          const now = Date.now();
-          if (!corrCooldowns[c.type] || now - corrCooldowns[c.type] > 8000) {
-            corrCooldowns[c.type] = now;
-            setCorr(c.msg);
-            speak(c.msg);
-            setTimeout(() => setCorr(null), 5000);
-          }
-          penalty += 15;
-        }
-      });
-      setScore(Math.max(0, 100 - penalty));
-      animRef.current = requestAnimationFrame(aiTick);
-    };
     const timer = setInterval(() => {
       setElapsed(e => {
-        if (e + 1 >= exercise.duration) { clearInterval(timer); cancelAnimationFrame(animRef.current); setPhase("rest"); speak("Wonderful. That's one exercise complete. Take a gentle breath."); return e + 1; }
-        if ((e + 1) === Math.floor(exercise.duration / 2)) speak("You're doing beautifully. Every small movement is healing your body from within.");
+        if (e + 1 >= exercise.duration) {
+          clearInterval(timer);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          setPhase("rest");
+          speak("Wonderful. That's one exercise complete. Take a gentle breath.", "high");
+          return e + 1;
+        }
+        if ((e + 1) === Math.floor(exercise.duration / 2)) {
+          speak("You're doing beautifully. Every small movement is healing your body from within.");
+        }
         return e + 1;
       });
     }, 1000);
-    animRef.current = requestAnimationFrame(aiTick);
-    return () => { clearInterval(timer); cancelAnimationFrame(animRef.current); };
+    return () => clearInterval(timer);
   }, [phase, exercise.duration]);
 
-  return { phase, setPhase, countdown, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak };
+  return {
+    phase, setPhase, countdown, elapsed, formScore, breathPhase,
+    correction, postureError, camGranted, cameraRef, speak, trackingStatus,
+  };
 }
 
 // ── Session screen ─────────────────────────────────────────────────────────
-function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit }) {
-  const { phase, setPhase, countdown, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak } = usePracticeSession(exercise);
+function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit, userName = "love" }) {
+  const { phase, setPhase, countdown, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus } = usePracticeSession(exercise, userName);
   const scoreColor = formScore >= 80 ? SAGE_DARK : formScore >= 60 ? "#B45309" : "#DC2626";
   const progress = exercise.duration > 0 ? elapsed / exercise.duration : 0;
+
+  // Tracking badge style
+  const trackingBadge = {
+    "loading":    { color: "#FCD34D", label: "Loading AI" },
+    "tracking":   { color: "#4ADE80", label: "AI tracking" },
+    "low-light":  { color: "#FB923C", label: "Low light" },
+    "error":      { color: "#EF4444", label: "Limited" },
+  }[trackingStatus] || { color: "#94A3B8", label: "Ready" };
 
   // Rest auto-advance
   useEffect(() => {
@@ -788,8 +1024,8 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
           }
           {camGranted && (
             <div style={{ position: "absolute", top: 5, left: 5, background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "2px 6px", display: "flex", alignItems: "center", gap: 3 }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ADE80" }} />
-              <span style={{ color: WHITE, fontSize: 8 }}>AI</span>
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: trackingBadge.color, animation: trackingStatus === "loading" ? "pulse 1s infinite" : "none" }} />
+              <span style={{ color: WHITE, fontSize: 8 }}>{trackingBadge.label}</span>
             </div>
           )}
         </div>
@@ -831,12 +1067,13 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
 }
 
 // ── Practice Tab root ──────────────────────────────────────────────────────
-function PracticeTab() {
+function PracticeTab({ userData }) {
   const [view, setView]         = useState("library");
   const [activeLevel, setLevel] = useState("beginner");
   const [selected, setSelected] = useState(null);
   const [sessionList, setSessionList] = useState([]);
   const [sessionIdx, setSessionIdx]   = useState(0);
+  const userName = userData?.name || "love";
 
   const levelData = EXERCISE_LEVELS[activeLevel];
 
@@ -881,6 +1118,7 @@ function PracticeTab() {
       levelData={EXERCISE_LEVELS[selected.level]}
       sessionList={sessionList}
       currentIdx={sessionIdx}
+      userName={userName}
       onNext={() => { const next = sessionIdx + 1; if (next < sessionList.length) { setSessionIdx(next); setSelected(sessionList[next]); } }}
       onExit={() => { setView("library"); setSelected(null); setSessionIdx(0); }}
     />
@@ -1363,7 +1601,7 @@ export default function App() {
 
   const tabMap = {
     home: <HomeTab userData={userData} />,
-    practice: <PracticeTab />,
+    practice: <PracticeTab userData={userData} />,
     checkin: <CheckinTab />,
     circle: <CircleTab />,
     resources: <ResourcesTab onHowItWorks={goHowItWorks} />,
