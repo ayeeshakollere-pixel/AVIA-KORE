@@ -638,6 +638,148 @@ const EXERCISE_LEVELS = {
 // ── Simulated voice cue hook ───────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  ONBOARDING SURVEY MODAL — 6-Question Diagnostic Intake
+// ═══════════════════════════════════════════════════════════════════════════
+function OnboardingSurveyModal({ isOpen, onComplete }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({
+    weeksPostpartum: "",
+    birthType: "",
+    painLevel: 5,
+    currentSymptoms: [],
+    fitnessLevel: "",
+    goals: "",
+  });
+
+  const questions = [
+    { id: "weeksPostpartum", label: "How many weeks postpartum are you?", type: "number", placeholder: "e.g., 8" },
+    { id: "birthType", label: "What type of birth did you have?", type: "select", options: ["Vaginal", "C-section", "Assisted (forceps/vacuum)"] },
+    { id: "painLevel", label: "Rate your current core/pelvic pain (0 = none, 10 = severe)", type: "slider", min: 0, max: 10 },
+    { id: "currentSymptoms", label: "Which symptoms are you experiencing? (select all)", type: "checkbox", options: ["Leaking with cough/sneeze", "Lower back pain", "Heaviness/pressure", "Pain during intimacy", "Visible bulging belly", "None of these"] },
+    { id: "fitnessLevel", label: "How would you describe your fitness level before pregnancy?", type: "select", options: ["Sedentary", "Lightly active", "Moderately active", "Very active"] },
+    { id: "goals", label: "What is your primary goal?", type: "select", options: ["Close my gap", "Stop leaking", "Reduce back pain", "Feel strong again", "Return to exercise"] },
+  ];
+
+  const handleAnswer = (key, value) => {
+    if (key === "currentSymptoms") {
+      const curr = answers.currentSymptoms || [];
+      setAnswers({
+        ...answers,
+        currentSymptoms: curr.includes(value) ? curr.filter(v => v !== value) : [...curr, value],
+      });
+    } else {
+      setAnswers({ ...answers, [key]: value });
+    }
+  };
+
+  const handleNext = () => {
+    if (step < questions.length - 1) setStep(step + 1);
+    else onComplete(answers);
+  };
+
+  if (!isOpen) return null;
+
+  const q = questions[step];
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+      <div style={{ background: CREAM, borderRadius: 24, padding: 32, maxWidth: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 12, color: TEXT_MID, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+            Question {step + 1} of {questions.length}
+          </div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: TEXT_DARK, marginBottom: 16 }}>{q.label}</h2>
+          <div style={{ height: 2, background: PLUM_PALE, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ height: "100%", background: PLUM, width: `${((step + 1) / questions.length) * 100}%`, transition: "width 0.3s" }} />
+          </div>
+        </div>
+
+        {q.type === "number" && (
+          <input
+            type="number"
+            placeholder={q.placeholder}
+            value={answers[q.id]}
+            onChange={(e) => handleAnswer(q.id, e.target.value)}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 16, marginBottom: 20 }}
+          />
+        )}
+
+        {q.type === "select" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+            {q.options.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => handleAnswer(q.id, opt)}
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 8,
+                  border: answers[q.id] === opt ? `2px solid ${PLUM}` : `1px solid ${BORDER}`,
+                  background: answers[q.id] === opt ? PLUM_PALE : WHITE,
+                  color: TEXT_DARK,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontSize: 14,
+                  transition: "all 0.2s",
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {q.type === "slider" && (
+          <div style={{ marginBottom: 20 }}>
+            <input
+              type="range"
+              min={q.min}
+              max={q.max}
+              value={answers[q.id]}
+              onChange={(e) => handleAnswer(q.id, parseInt(e.target.value))}
+              style={{ width: "100%", cursor: "pointer", marginBottom: 12 }}
+            />
+            <div style={{ textAlign: "center", fontSize: 28, color: PLUM, fontWeight: 600 }}>{answers[q.id]}</div>
+          </div>
+        )}
+
+        {q.type === "checkbox" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+            {q.options.map((opt) => (
+              <label key={opt} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14, color: TEXT_DARK }}>
+                <input
+                  type="checkbox"
+                  checked={(answers.currentSymptoms || []).includes(opt)}
+                  onChange={() => handleAnswer(q.id, opt)}
+                  style={{ width: 18, height: 18, cursor: "pointer" }}
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={handleNext}
+          style={{
+            width: "100%",
+            padding: "12px 16px",
+            background: PLUM,
+            color: WHITE,
+            border: "none",
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            letterSpacing: 1,
+          }}
+        >
+          {step === questions.length - 1 ? "Complete Survey" : "Next"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  VOICE COACHING SCRIPTS — Plain language, warm, conversational
 // ═══════════════════════════════════════════════════════════════════════════
 // Written for African mothers — no clinical jargon. Body-relatable cues only.
@@ -1039,9 +1181,15 @@ function usePracticeSession(exercise, userName = "love") {
 
   // Cleanup audio on unmount
   useEffect(() => () => {
+    // CRITICAL: Stop Tolani from continuing to speak after user exits
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
     voiceQueueRef.current = [];
+    voiceIsSpeakingRef.current = false;
     voiceSynth?.cancel();
+    // Also cancel MediaPipe interval
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    // Cleanup breath coaching timers if they exist
+    if (window._breathTimer) clearInterval(window._breathTimer);
   }, [voiceSynth]);
 
   // Speak a correction respecting per-type cooldown (prevent repeating same cue)
@@ -1295,6 +1443,8 @@ function usePracticeSession(exercise, userName = "love") {
 // ── Session screen ─────────────────────────────────────────────────────────
 function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit, userName = "love" }) {
   const { phase, setPhase, countdown, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus } = usePracticeSession(exercise, userName);
+  const [workoutMode, setWorkoutMode] = useState("manual"); // manual | automatic
+  const [nextExerciseBuffer, setNextBuffer] = useState(null); // countdown to next
   const scoreColor = formScore >= 80 ? SAGE_DARK : formScore >= 60 ? "#B45309" : "#DC2626";
   const progress = exercise.duration > 0 ? elapsed / exercise.duration : 0;
 
@@ -1305,6 +1455,24 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     "low-light":  { color: "#FB923C", label: "Low light" },
     "error":      { color: "#EF4444", label: "Limited" },
   }[trackingStatus] || { color: "#94A3B8", label: "Ready" };
+
+  // Auto-transition logic: when exercise ends, in auto mode, wait 5s then go to next
+  useEffect(() => {
+    if (phase === "rest" && workoutMode === "automatic" && nextExerciseBuffer === null) {
+      speak("Get ready for the next one, love.", "high");
+      let countdown = 5;
+      setNextBuffer(countdown);
+      const timer = setInterval(() => {
+        countdown--;
+        setNextBuffer(countdown);
+        if (countdown === 0) {
+          clearInterval(timer);
+          onNext();
+        }
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [phase, workoutMode, nextExerciseBuffer]);
 
   // Rest auto-advance
   useEffect(() => {
@@ -1398,6 +1566,93 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
           <div style={{ width: 10, height: 10, borderRadius: "50%", background: PLUM_LIGHT, animation: breathPhase === "inhale" ? "breatheIn 2s ease-in-out forwards" : "breatheOut 2s ease-in-out forwards" }} />
           <span style={{ fontSize: 12, color: TEXT_LIGHT }}>{breathPhase === "inhale" ? "Inhale..." : "Exhale..."}</span>
         </div>
+
+        {/* Mode toggle (only show after first exercise) */}
+        {phase === "rest" && currentIdx > 0 && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setWorkoutMode("manual")}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                background: workoutMode === "manual" ? PLUM : "rgba(255,255,255,0.08)",
+                color: WHITE,
+                border: "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              Manual
+            </button>
+            <button
+              onClick={() => setWorkoutMode("automatic")}
+              style={{
+                flex: 1,
+                padding: "10px 12px",
+                background: workoutMode === "automatic" ? PLUM : "rgba(255,255,255,0.08)",
+                color: WHITE,
+                border: "none",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              Auto
+            </button>
+          </div>
+        )}
+
+        {/* Manual next button or auto countdown */}
+        {phase === "rest" && currentIdx < sessionList.length - 1 && (
+          nextExerciseBuffer !== null && workoutMode === "automatic" ? (
+            <div style={{ textAlign: "center", fontSize: 14, color: PLUM_LIGHT, marginBottom: 10, fontWeight: 600 }}>
+              Next in {nextExerciseBuffer}...
+            </div>
+          ) : workoutMode === "manual" ? (
+            <button
+              onClick={onNext}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                background: PLUM,
+                color: WHITE,
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginBottom: 10,
+                transition: "all 0.2s",
+              }}
+            >
+              Next Exercise
+            </button>
+          ) : null
+        )}
+
+        {/* Exit button */}
+        {(phase === "rest" || currentIdx === sessionList.length - 1) && (
+          <button
+            onClick={onExit}
+            style={{
+              width: "100%",
+              padding: "10px 16px",
+              background: "rgba(255,255,255,0.1)",
+              color: TEXT_LIGHT,
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            Exit Session
+          </button>
+        )}
 
         {/* Exercise dots */}
         <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
@@ -1525,7 +1780,18 @@ function CheckinTab() {
   const [feeling, setFeeling] = useState("Pushing through");
   const [journal, setJournal] = useState("");
   const [gap, setGap] = useState("");
+  const [assessStep, setAssessStep] = useState(1); // 1-4
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const feelings = ["Demotivated", "Overwhelmed", "Tired", "Pushing through", "Calm", "Happy", "Energized", "Stronger"];
+
+  const assessmentSteps = [
+    { num: 1, title: "Lie down comfortably", desc: "Find a flat surface. Lie on your back with knees bent and feet flat on the floor. Relax your shoulders.", icon: "knees" },
+    { num: 2, title: "Locate your separation", desc: "Place your fingers horizontally above the navel, between the two sides of your rectus abdominis muscle.", icon: "hands" },
+    { num: 3, title: "Measure your gap", desc: "Press gently and count how many fingers fit between the muscle bellies. Relax and repeat 2–3 times.", icon: "measure" },
+    { num: 4, title: "Record your baseline", desc: "Write down the number. This is your starting point. We'll track progress together from here.", icon: "record" },
+  ];
+
+  const currentStep = assessmentSteps[assessStep - 1];
 
   return (
     <div style={{ padding: "24px 24px 0" }}>
@@ -1535,18 +1801,27 @@ function CheckinTab() {
       <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>Self-assessment</div>
-          <span style={{ background: SAGE, padding: "4px 12px", borderRadius: 20, fontSize: 12, color: TEXT_MID }}>Step 1 / 4</span>
+          <span style={{ background: SAGE, padding: "4px 12px", borderRadius: 20, fontSize: 12, color: TEXT_MID }}>Step {assessStep} / 4</span>
         </div>
         <div style={{ textAlign: "center", marginBottom: 12 }}>
           <svg width={80} height={60} viewBox="0 0 80 60"><circle cx={40} cy={14} r={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><ellipse cx={40} cy={42} rx={22} ry={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><circle cx={40} cy={42} r={4} fill={SAGE_DARK}/></svg>
           <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Knees bent · Back flat</div>
         </div>
-        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>Lie down comfortably</h3>
-        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>Find a flat surface. Lie on your back with knees bent and feet flat on the floor. Relax your shoulders.</p>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>{currentStep.title}</h3>
+        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>{currentStep.desc}</p>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 16 }}>
-          {[0, 1, 2, 3].map(i => <div key={i} style={{ width: i === 0 ? 24 : 8, height: 4, borderRadius: 3, background: i === 0 ? PLUM : CREAM_DARK }} />)}
+          {[0, 1, 2, 3].map(i => <div key={i} style={{ width: i < assessStep ? 24 : 8, height: 4, borderRadius: 3, background: i < assessStep ? PLUM : CREAM_DARK, transition: "all 0.3s" }} />)}
         </div>
-        <PillButton label="Next step ›" style={{ width: "100%", padding: "14px", borderRadius: 50 }} />
+        <div style={{ display: "flex", gap: 10 }}>
+          {assessStep > 1 && (
+            <button onClick={() => setAssessStep(assessStep - 1)} style={{ flex: 1, padding: "14px", borderRadius: 50, border: `1px solid ${BORDER}`, background: WHITE, fontSize: 14, fontWeight: 500, cursor: "pointer", color: TEXT_DARK }}>
+              ‹ Back
+            </button>
+          )}
+          <button onClick={() => assessStep < 4 ? setAssessStep(assessStep + 1) : null} style={{ flex: 1, padding: "14px", borderRadius: 50, background: assessStep === 4 ? SAGE : PLUM, color: WHITE, border: "none", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+            {assessStep === 4 ? "✓ Complete" : "Next step ›"}
+          </button>
+        </div>
       </div>
 
       <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
@@ -1576,11 +1851,32 @@ function CheckinTab() {
           <span style={{ fontSize: 14, color: TEXT_MID }}>cm</span>
         </div>
         <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 14 }}>Last: 3.2 cm</div>
-        <div style={{ background: SAGE, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={() => setShowPhotoMenu(true)} style={{ width: "100%", background: SAGE, borderRadius: 10, padding: "12px 16px", border: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span style={{ fontSize: 13, color: TEXT_MID }}>Attach a secure photo (on-device)</span>
-        </div>
+          <span style={{ fontSize: 13, color: TEXT_MID, fontFamily: "'DM Sans', sans-serif" }}>Attach a secure photo (on-device)</span>
+        </button>
       </div>
+
+      {/* Photo menu modal */}
+      {showPhotoMenu && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 9999 }}>
+          <div style={{ width: "100%", background: WHITE, borderRadius: "20px 20px 0 0", padding: "20px", paddingBottom: 40 }}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK, marginBottom: 4 }}>Add measurement photo</h3>
+              <p style={{ fontSize: 13, color: TEXT_MID }}>Take a photo or choose from your device</p>
+            </div>
+            <button onClick={() => { setShowPhotoMenu(false); alert("Camera will open"); }} style={{ width: "100%", padding: "16px", background: PLUM, color: WHITE, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
+              📷 Snap Photo Now
+            </button>
+            <button onClick={() => { setShowPhotoMenu(false); alert("Gallery will open"); }} style={{ width: "100%", padding: "16px", background: SAGE, color: SAGE_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
+              🖼️ Choose From Album
+            </button>
+            <button onClick={() => setShowPhotoMenu(false)} style={{ width: "100%", padding: "16px", background: CREAM_DARK, color: TEXT_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -1797,9 +2093,13 @@ function PromiseBanner() {
 function ResourcesTab({ onHowItWorks }) {
   const [faqOpen, setFaqOpen] = useState(null);
   const articles = [
-    { title: "Gentle Breathing for Pelvic Stability", author: "Dr. Amelia Rivers", read: "6 min read", tag: "BREATHING" },
-    { title: "Posture Cues to Reduce Pelvic Pressure", author: "Renée Parker", read: "8 min read", tag: "POSTURE" },
-    { title: "Returning to Movement at 12 Weeks", author: "Dr. Sofia Martin", read: "5 min read", tag: "MOVEMENT" },
+    { title: "Understanding Abdominal Separation: What is Diastasis Recti?", author: "Clinical Overview", read: "10 min read", tag: "ANATOMY" },
+    { title: "3-Step DIY Diastasis Recti Self-Assessment at Home", author: "Practical Guide", read: "7 min read", tag: "ASSESSMENT" },
+    { title: "Deep Core Anatomy: How Your Abdominals Work with Your Pelvic Floor", author: "Rehabilitation Mechanics", read: "12 min read", tag: "ANATOMY" },
+  ];
+  const videos = [
+    { title: "How To Test for Diastasis Recti", author: "Dr. Brianne Grogan, PT, DPT", desc: "Clear step-by-step physical therapy instructions for checking your gap baseline at home safely.", url: "https://www.youtube.com/embed/2XAzDXZokEs" },
+    { title: "DIASTASIS RECTI - The Best 3D Animation Explanation", author: "Pregnancy and Postpartum TV", desc: "High-end 3D animation mapping how the linea alba stretches during pregnancy.", url: "https://www.youtube.com/embed/RKjRTtoHZHQ" },
   ];
   const physios = [
     { name: "Dr. Sofia Martin", spec: "Pelvic health", dist: "2.3 km", initials: "S" },
@@ -1837,15 +2137,15 @@ function ResourcesTab({ onHowItWorks }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-        <div style={{ background: PLUM, borderRadius: 14, padding: "18px 16px", cursor: "pointer" }}>
-          <div style={{ marginBottom: 8 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={PLUM_PALE} strokeWidth="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: WHITE }}>Myth-Buster Bot</div>
-          <div style={{ fontSize: 12, color: PLUM_LIGHT, marginTop: 2 }}>Ask anything · 24/7</div>
-        </div>
         <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 16px", cursor: "pointer" }}>
           <div style={{ marginBottom: 8 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.5 19.79 19.79 0 01.07 4.72C.05 3.61.82 2.68 1.93 2H4.97a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
           <div style={{ fontSize: 15, fontWeight: 500, color: TEXT_DARK }}>Refer specialist</div>
           <div style={{ fontSize: 12, color: TEXT_MID, marginTop: 2 }}>Vetted nearby</div>
+        </div>
+        <div style={{ background: PLUM_PALE, borderRadius: 14, border: `1px solid ${PLUM_LIGHT}`, padding: "18px 16px", cursor: "pointer" }}>
+          <div style={{ marginBottom: 8 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={PLUM} strokeWidth="1.8"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: TEXT_DARK }}>Video guides</div>
+          <div style={{ fontSize: 12, color: TEXT_MID, marginTop: 2 }}>Expert explanations</div>
         </div>
       </div>
 
@@ -1878,6 +2178,28 @@ function ResourcesTab({ onHowItWorks }) {
             <span style={{ background: SAGE, color: SAGE_DARK, padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 500 }}>{a.tag}</span>
           </div>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TEXT_LIGHT} strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      ))}
+
+      {/* Video Embeds */}
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 12, marginTop: 20 }}>Video guides from experts</div>
+      {videos.map((v, i) => (
+        <div key={i} style={{ marginBottom: 16, background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
+          <div style={{ width: "100%", paddingBottom: "56.25%", position: "relative", background: "#000", height: 0 }}>
+            <iframe
+              title={v.title}
+              src={v.url}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+            />
+          </div>
+          <div style={{ padding: "16px 20px" }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: TEXT_DARK, marginBottom: 2 }}>{v.title}</div>
+            <div style={{ fontSize: 12, color: TEXT_MID, marginBottom: 8 }}>{v.author}</div>
+            <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.4 }}>{v.desc}</div>
+          </div>
         </div>
       ))}
 
@@ -1919,11 +2241,17 @@ export default function App() {
   const [onboardStep, setOnboardStep] = useState(1);
   const [userData, setUserData] = useState({});
   const [activeTab, setActiveTab] = useState("home");
+  const [showSurvey, setShowSurvey] = useState(true); // Show survey on first app load
 
   const goNext = () => { if (onboardStep < 6) setOnboardStep(onboardStep + 1); else setScreen("app"); };
   const goBack = () => { if (onboardStep > 1) setOnboardStep(onboardStep - 1); else setScreen("landing"); };
   const startOnboard = () => { setOnboardStep(1); setScreen("onboard"); };
   const goHowItWorks = () => setScreen("howitworks");
+
+  const handleSurveyComplete = (surveyAnswers) => {
+    setUserData({ ...userData, surveyAnswers });
+    setShowSurvey(false);
+  };
 
   if (screen === "landing") return (
     <><style>{fonts}{globalStyle}</style><Landing onStart={startOnboard} onHowItWorks={goHowItWorks} /></>
@@ -1951,6 +2279,7 @@ export default function App() {
 
   return (
     <><style>{fonts}{globalStyle}</style>
+    <OnboardingSurveyModal isOpen={showSurvey && screen === "app"} onComplete={handleSurveyComplete} />
     <AppShell activeTab={activeTab} setActiveTab={setActiveTab}>
       {tabMap[activeTab]}
     </AppShell></>
