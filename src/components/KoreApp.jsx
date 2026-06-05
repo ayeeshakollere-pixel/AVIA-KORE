@@ -24,6 +24,9 @@ const globalStyle = `
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
   @keyframes toastIn { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
+  @keyframes shimmer { 0% { backgroundPosition: 200% 0; } 100% { backgroundPosition: -200% 0; } }
+  @keyframes breatheIn { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+  @keyframes breatheOut { 0% { transform: scale(1.3); } 100% { transform: scale(1); } }
 `;
 
 // ─── SVG Tab Icons ────────────────────────────────────────────────────────────
@@ -98,6 +101,114 @@ function KoreHeroLogo() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SHIMMER SKELETON LOADER — Beautiful loading placeholders
+// ═══════════════════════════════════════════════════════════════════════════
+function ShimmerSkeleton({ width = "100%", height = "200px", borderRadius = "12px", count = 1 }) {
+  return (
+    <div style={{ display: "flex", flexDirection: count > 1 ? "column" : "row", gap: 12 }}>
+      {Array(count).fill(0).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width,
+            height,
+            borderRadius,
+            background: `linear-gradient(90deg, ${CREAM_DARK} 25%, ${CREAM} 50%, ${CREAM_DARK} 75%)`,
+            backgroundSize: "200% 100%",
+            animation: "shimmer 2s infinite",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ERROR BOUNDARY — Graceful error handling & camera permission errors
+// ═══════════════════════════════════════════════════════════════════════════
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "24px", background: CREAM, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", maxWidth: 400 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: TEXT_DARK, marginBottom: 12 }}>Something went wrong</h2>
+            <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 20, lineHeight: 1.6 }}>
+              We encountered an unexpected issue. Try refreshing the page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "12px 24px",
+                background: PLUM,
+                color: WHITE,
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Refresh page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Camera Permission Error Component
+function CameraPermissionError({ onRetry }) {
+  return (
+    <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "20px 24px", textAlign: "center" }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>📷</div>
+      <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK, marginBottom: 12 }}>Camera access required</h3>
+      <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 18, lineHeight: 1.6 }}>
+        KORE uses your device camera to track your posture and provide real-time feedback.
+      </p>
+      <div style={{ background: "#FEF3C7", borderLeft: "4px solid #F59E0B", padding: "12px 14px", borderRadius: 6, marginBottom: 18, textAlign: "left" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#B45309", marginBottom: 4 }}>How to fix:</div>
+        <ol style={{ fontSize: 12, color: "#92400E", margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
+          <li>Tap the lock icon in your browser's address bar</li>
+          <li>Find "Camera" and change to "Allow"</li>
+          <li>Refresh and try again</li>
+        </ol>
+      </div>
+      <button
+        onClick={onRetry}
+        style={{
+          padding: "12px 24px",
+          background: PLUM,
+          color: WHITE,
+          border: "none",
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: "pointer",
+          width: "100%",
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 function PillButton({ label, onClick, style = {}, variant = "primary", icon }) {
   const base = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "12px 28px", borderRadius: 50, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: 15, transition: "opacity 0.15s" };
   const variants = {
@@ -593,53 +704,124 @@ function HomeTab({ userData }) {
 // live in KoreExerciseModule.jsx — import and swap accordingly in production.
 
 // ── Exercise DB (subset for PracticeTab quick-launch) ─────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 20-EXERCISE DATABASE — Production-Ready with Instructions & Voice Scripts
+// ═══════════════════════════════════════════════════════════════════════════
+const EXERCISES_FULL = [
+  // LEVEL 1: BEGINNER (7 exercises)
+  { id: "beg_01", name: "Diaphragmatic Breathing", level: "beginner", duration: 45, reps: "5 rounds × 5 breaths", tolaniIntro: "Close your eyes, love. Place your hands on your tummy, inhale deeply, and as you exhale, imagine gently blowing up a beautiful balloon right through your belly button, drawing it back toward your spine. This is your foundation.", steps: ["Step 1: Lie on your back, knees bent, feet flat on the floor, hands resting on your belly.", "Step 2: Breathe in slowly through your nose for a count of four, feeling your belly rise like a balloon filling with air.", "Step 3: Exhale for a count of six, imagining the air flowing all the way down your spine, creating length and space.", "Step 4: At the end of the exhale, gently draw your lower belly in toward your spine — just 20% effort, nothing forced.", "Step 5: Release and rest for two breaths. Repeat this cycle five times.", "Step 6: This breath is your anchor. Return to it whenever you feel tension creeping back in."] },
+  { id: "beg_02", name: "Pelvic Tilts", level: "beginner", duration: 45, reps: "10 reps × 2 sets", tolaniIntro: "Mama, your pelvis is like a bowl of water. We're going to gently tip it — not dump it, just a soft tilt. Your spine will thank you.", steps: ["Step 1: Lie on your back, knees bent, feet hip-width apart, arms at your sides.", "Step 2: Exhale and gently tilt your pelvis, flattening your lower back into the mat as if you're trying to imprint it.", "Step 3: Hold for two breaths, feeling the deep muscles engage below your navel.", "Step 4: Inhale and release, returning your pelvis to neutral—not arched, not tucked, just balanced.", "Step 5: Repeat ten times at a slow, controlled pace.", "Step 6: Rest, then do a second set of ten."] },
+  { id: "beg_03", name: "Supine Belly Vacuums", level: "beginner", duration: 40, reps: "8 reps × 2 sets", tolaniIntro: "Think of this as waking up your deepest core muscle — the one that holds you together. We're gently drawing in, like you're zipping up the most comfortable jeans.", steps: ["Step 1: Lie on your back, knees bent, feet flat, arms at your sides.", "Step 2: Exhale completely, emptying all the air from your lungs.", "Step 3: Without inhaling, gently draw your belly button in toward your spine—soft, not forced, just 30% effort.", "Step 4: Hold this gentle contraction for three to five seconds while breathing shallowly.", "Step 5: Release and inhale fully, letting your belly relax completely.", "Step 6: Rest for one breath, then repeat eight times."] },
+  { id: "beg_04", name: "Seated Core Compressions", level: "beginner", duration: 40, reps: "10 reps × 2 sets", tolaniIntro: "Sit tall, sweetheart. Imagine there's a string pulling the crown of your head toward the ceiling. Now, we're going to gently hug your belly in—like a warm embrace from the inside.", steps: ["Step 1: Sit upright on the floor or a chair, feet flat, spine tall.", "Step 2: Place your hands gently on your lower belly.", "Step 3: Exhale and draw your belly in softly, feeling the muscles beneath your hands engage.", "Step 4: Hold for three seconds, breathing naturally—never hold your breath.", "Step 5: Inhale and release completely, letting your belly soften.", "Step 6: Repeat ten times, then rest before a second set."] },
+  { id: "beg_05", name: "Glute Bridges (Standard)", level: "beginner", duration: 45, reps: "10 reps × 2 sets", tolaniIntro: "Your glutes are your powerhouse, mama. We're waking them up gently. Squeeze like you're holding a coin between your cheeks—firm but kind.", steps: ["Step 1: Lie on your back, knees bent, feet hip-width apart, arms at your sides.", "Step 2: Press through your heels and lift your hips toward the ceiling, creating a straight line from knees to shoulders.", "Step 3: Squeeze your glutes at the top for two seconds—this is where the magic happens.", "Step 4: Lower back down slowly, one vertebra at a time.", "Step 5: Rest at the bottom for one breath.", "Step 6: Repeat ten times, then rest before set two."] },
+  { id: "beg_06", name: "Wall Sits with Transverse Engagement", level: "beginner", duration: 40, reps: "3 × 20-sec holds", tolaniIntro: "Find a wall, love. You're going to sit back and let it hold you while your deep core wakes up. Breathe. You're safe.", steps: ["Step 1: Stand with your back against a wall, feet hip-width apart, about 12 inches away from the wall.", "Step 2: Slide down until your thighs are parallel to the ground—like you're sitting in an invisible chair.", "Step 3: Place your hands on your lower belly and gently draw it in, maintaining that soft engagement.", "Step 4: Hold for twenty seconds, breathing steadily throughout.", "Step 5: Stand back up slowly, pressing through your heels.", "Step 6: Rest for thirty seconds, then repeat two more times."] },
+  { id: "beg_07", name: "Supported Cat-Cow", level: "beginner", duration: 45, reps: "8 rounds × 2 sets", tolaniIntro: "Get on your hands and knees, mama. This is where we mobilize your spine and reconnect with your breath. Slow and gentle—no rushing.", steps: ["Step 1: Come to all fours—hands under shoulders, knees under hips.", "Step 2: Inhale, drop your belly gently, lift your gaze—this is Cow. Feel your spine lengthen.", "Step 3: Exhale, draw your belly in and round your spine—this is Cat. Tuck your chin.", "Step 4: Move slowly between these two positions, letting your breath guide the movement.", "Step 5: Do eight full rounds at a relaxed pace.", "Step 6: Rest in child's pose, then repeat a second set of eight."] },
+  // LEVEL 2: INTERMEDIATE (7 exercises)
+  { id: "int_01", name: "Heel Slides", level: "intermediate", duration: 50, reps: "10 each side × 3", tolaniIntro: "You're building strength now, sweetheart. Slide one foot out—keep your back flat and your core braced. This is precision work.", steps: ["Step 1: Lie on your back, knees bent, feet flat on the floor, arms at your sides.", "Step 2: Exhale and gently brace your core—imagine corset strings tightening around your waist.", "Step 3: Keeping your core engaged, slowly slide one heel away from you, straightening that leg.", "Step 4: Your lower back should stay flat—if it arches, bring your leg back a bit closer.", "Step 5: Slide your heel back to starting position.", "Step 6: Repeat ten times on one side, then switch. Do three sets total."] },
+  { id: "int_02", name: "Glute Bridges with Abdominal Bracing", level: "intermediate", duration: 50, reps: "10 reps × 3 sets", tolaniIntro: "Now we're adding power to your foundation. Brace your belly as you lift—create that internal corset, then drive through your heels.", steps: ["Step 1: Lie on your back, knees bent, feet hip-width apart, arms at your sides.", "Step 2: Exhale and brace your core—draw your belly in slightly.", "Step 3: Maintaining that brace, press through your heels and lift your hips high.", "Step 4: Squeeze your glutes hard at the top for two seconds.", "Step 5: Lower down slowly, keeping your core engaged the entire time.", "Step 6: Repeat ten times, rest, then do two more sets of ten."] },
+  { id: "int_03", name: "Modified Bird-Dog (Leg extension only)", level: "intermediate", duration: 55, reps: "8 each side × 3", tolaniIntro: "On your hands and knees, love. We're extending one leg back—keep your hips level, like you're balancing a cup of tea on your lower back.", steps: ["Step 1: Come to all fours—hands under shoulders, knees under hips.", "Step 2: Engage your core by drawing your belly in gently.", "Step 3: Keeping your hips still and level, slowly extend one leg straight back.", "Step 4: Squeeze your glute at full extension for one second.", "Step 5: Return your knee to the mat with control.", "Step 6: Repeat eight times on one side, then switch. Do three sets total."] },
+  { id: "int_04", name: "Side Lying Clamshells", level: "intermediate", duration: 45, reps: "12 each side × 3", tolaniIntro: "Lie on your side, mama. Think of your hips as a door hinge. We're opening the top knee like a clam shell—slow and controlled.", steps: ["Step 1: Lie on your right side, hips stacked, knees bent at ninety degrees.", "Step 2: Keep your feet together and exhale as you lift your top knee toward the ceiling.", "Step 3: Only open as far as you can while keeping your hips from rolling back.", "Step 4: Pause at the top for one second, squeezing your outer hip.", "Step 5: Lower your knee back down with control.", "Step 6: Do twelve reps on one side, then roll over and repeat on the other side. Three sets total."] },
+  { id: "int_05", name: "Quadruped Belly Lifts", level: "intermediate", duration: 45, reps: "8 reps × 3 sets", tolaniIntro: "On hands and knees again. This time, we're lifting your belly up and in—creating space between your ribs and hips. Hold it strong.", steps: ["Step 1: Come to all fours with a neutral spine.", "Step 2: Exhale fully and draw your belly in and up—create a hollow space beneath your ribs.", "Step 3: Hold this lift for three to five seconds, breathing gently.", "Step 4: Release and return to neutral.", "Step 5: Rest for one breath.", "Step 6: Repeat eight times, rest, then do two more sets of eight."] },
+  { id: "int_06", name: "Standing Pelvic Clocks", level: "intermediate", duration: 45, reps: "8 circles each direction", tolaniIntro: "Stand tall, sweetheart. Imagine your pelvis is the face of a clock. We're drawing a circle with your hips—twelve o'clock is forward, three is to the right.", steps: ["Step 1: Stand with feet hip-width apart, hands on your hips or a wall for balance.", "Step 2: Engage your core lightly.", "Step 3: Slowly tilt your pelvis forward (12 o'clock), then to the right (3 o'clock), back (6 o'clock), and left (9 o'clock).", "Step 4: Make smooth, controlled movements—this is mobility and control combined.", "Step 5: Complete eight full circles moving clockwise.", "Step 6: Reverse direction and do eight circles counterclockwise."] },
+  { id: "int_07", name: "Assisted Squats with Core Bracing", level: "intermediate", duration: 50, reps: "8 reps × 3 sets", tolaniIntro: "Hold onto something—a counter, a chair, whatever steadies you. Squat down slow, brace your core, and drive back up through your heels.", steps: ["Step 1: Stand facing a counter or sturdy chair, feet hip-width apart, holding lightly for balance.", "Step 2: Inhale and exhale as you brace your core—draw your belly in gently.", "Step 3: Maintaining that brace, lower your hips back and down as if sitting in a chair.", "Step 4: Keep your weight in your heels and your chest upright.", "Step 5: Press through your heels to stand back up.", "Step 6: Repeat eight times, rest, then do two more sets of eight."] },
+  // LEVEL 3: ADVANCED (6 exercises)
+  { id: "adv_01", name: "Single-Leg Tabletop Extensions", level: "advanced", duration: 55, reps: "8 each side × 3", tolaniIntro: "Tabletop position—hands and feet on the ground, hips lifted. Now extend one leg straight—keep those hips level and strong.", steps: ["Step 1: Sit on the floor, hands behind you, feet in front, knees bent.", "Step 2: Press through your hands and feet to lift your hips high—this is Tabletop.", "Step 3: Maintain a braced core and level hips as you extend one leg straight out.", "Step 4: Your hips should stay parallel—don't let them drop or rotate.", "Step 5: Lower your foot back to the ground with control.", "Step 6: Repeat eight times on one side, then switch. Three sets total."] },
+  { id: "adv_02", name: "Deadbugs (Slow, controlled alternation)", level: "advanced", duration: 55, reps: "8 each side × 3", tolaniIntro: "Lie on your back, arms reaching up, knees bent at ninety degrees. We're extending opposite limbs—opposite arm and leg, slow and steady.", steps: ["Step 1: Lie on your back, arms extended toward the ceiling, knees bent at ninety degrees.", "Step 2: Exhale and lower your right arm overhead while straightening your left leg, hovering it just above the floor.", "Step 3: Keep your lower back pressed into the mat the entire time—no arching.", "Step 4: Return to starting position, breathing naturally.", "Step 5: Repeat on the opposite side—left arm, right leg.", "Step 6: Alternate for eight reps each side, rest, then do two more sets."] },
+  { id: "adv_03", name: "Full Bird-Dog (Opposite arm & leg)", level: "advanced", duration: 55, reps: "10 each side × 3", tolaniIntro: "You're strong now, mama. On all fours—extend your opposite arm and leg fully. Create one long line of power from fingertips to toes.", steps: ["Step 1: Come to all fours with a strong, engaged core.", "Step 2: Simultaneously extend your right arm forward and your left leg back, creating a straight line.", "Step 3: Keep your hips level—don't let your body twist or sag.", "Step 4: Hold the extension for one second, feeling the connection through your entire body.", "Step 5: Return to all fours with control.", "Step 6: Repeat ten times on one side, then switch. Three sets total."] },
+  { id: "adv_04", name: "Modified Side Planks (On knees)", level: "advanced", duration: 45, reps: "3 × 30-sec holds", tolaniIntro: "On your right elbow and right knee—stack your hips. Lift your left hip high toward the ceiling. You are a warrior, sweetheart.", steps: ["Step 1: Lie on your right side, propped up on your right forearm, right knee bent on the ground.", "Step 2: Engage your core and press through your right forearm to lift your hips high.", "Step 3: Create a straight line from your head to your left knee.", "Step 4: Hold steady for thirty seconds, breathing throughout.", "Step 5: Lower your hips with control.", "Step 6: Repeat on the other side. Do three sets total."] },
+  { id: "adv_05", name: "Bear Hovers (Knees floating 1 inch)", level: "advanced", duration: 45, reps: "3 × 20-sec holds", tolaniIntro: "Hands and feet on the ground, hips low, knees hovering just an inch above the mat. Hold this beast position with power and breath.", steps: ["Step 1: Come to hands and feet, hands under shoulders, feet under hips.", "Step 2: Engage your core strongly and lift your knees just one inch off the ground.", "Step 3: Your body should be one straight line from head to heels.", "Step 4: Breathe steadily—never hold your breath in this position.", "Step 5: Hold for twenty seconds, then rest.", "Step 6: Repeat two more times for a total of three twenty-second holds."] },
+  { id: "adv_06", name: "Pallof Presses (Using light resistance)", level: "advanced", duration: 50, reps: "10 each side × 3", tolaniIntro: "Stand sideways to your resistance band or light weight. Hold it at your chest, then press straight out—resist the rotation. Stay square, stay strong.", steps: ["Step 1: Stand with feet hip-width apart, holding a light resistance band or weight at chest height.", "Step 2: Engage your core and press the band straight out in front of you, arms fully extended.", "Step 3: Resist the urge to rotate—keep your shoulders and hips facing forward.", "Step 4: Hold the press for two seconds, feeling the deep lateral core muscles engage.", "Step 5: Return the band to your chest with control.", "Step 6: Repeat ten times on one side, then switch. Three sets total."] },
+];
+
+// Build EXERCISE_LEVELS from the 20-exercise database
 const EXERCISE_LEVELS = {
   beginner: {
-    label: "Beginner", sublabel: "Deep Activation", weeks: "Weeks 1–6",
+    label: "Beginner", sublabel: "Foundation & Re-activation", weeks: "Weeks 1–6",
     color: "#6B8F6B", bgColor: "#E8EDE8",
-    exercises: [
-      { id:"beg_01", name:"Pelvic Tilts",           reps:"10 reps × 2 sets", duration:45, level:"beginner" },
-      { id:"beg_02", name:"Abdominal Bracing",       reps:"8 reps × 2 sets",  duration:40, level:"beginner" },
-      { id:"beg_03", name:"Supported Heel Slides",   reps:"8 each side × 2",  duration:45, level:"beginner" },
-      { id:"beg_04", name:"Low Glute Bridges",       reps:"10 reps × 2 sets", duration:45, level:"beginner" },
-      { id:"beg_05", name:"Modified Dead Bug",       reps:"6 each side × 2",  duration:50, level:"beginner" },
-      { id:"beg_06", name:"Seated TVA Contractions", reps:"10 reps × 2 sets", duration:40, level:"beginner" },
-      { id:"beg_07", name:"Side-Lying Clamshells",   reps:"12 each side × 2", duration:45, level:"beginner" },
-    ],
+    exercises: EXERCISES_FULL.filter(e => e.level === "beginner"),
   },
   intermediate: {
-    label: "Intermediate", sublabel: "Core Loading", weeks: "Weeks 7–12",
+    label: "Intermediate", sublabel: "Progression & Core Stability", weeks: "Weeks 7–12",
     color: "#6B2D4E", bgColor: "#EDE0E8",
-    exercises: [
-      { id:"int_01", name:"Unsupported Heel Slides",        reps:"10 each side × 3", duration:50, level:"intermediate" },
-      { id:"int_02", name:"Dead Bug (Legs Only)",            reps:"8 each side × 3",  duration:50, level:"intermediate" },
-      { id:"int_03", name:"Bird-Dog (Alt. Arm & Leg)",      reps:"8 each side × 3",  duration:55, level:"intermediate" },
-      { id:"int_04", name:"Bent-Knee Fall Outs",            reps:"10 each side × 3", duration:45, level:"intermediate" },
-      { id:"int_05", name:"Modified Side Plank (Knees)",    reps:"3 × 20-sec holds",  duration:40, level:"intermediate" },
-      { id:"int_06", name:"Seated Heel Taps",               reps:"12 each side × 3", duration:45, level:"intermediate" },
-      { id:"int_07", name:"Wall Squats with TVA Hold",      reps:"8 reps × 3 sets",  duration:50, level:"intermediate" },
-    ],
+    exercises: EXERCISES_FULL.filter(e => e.level === "intermediate"),
   },
   advanced: {
-    label: "Advanced", sublabel: "Functional Strength", weeks: "Weeks 13+",
+    label: "Advanced", sublabel: "Functional Strength & Integration", weeks: "Weeks 13+",
     color: "#2D5A3D", bgColor: "#E8F0EB",
-    exercises: [
-      { id:"adv_01", name:"Full Dead Bug (Opp. Arm & Leg)", reps:"8 each side × 3",  duration:55, level:"advanced" },
-      { id:"adv_02", name:"Full Bird-Dog",                   reps:"10 each side × 3", duration:55, level:"advanced" },
-      { id:"adv_03", name:"Full Side Plank (From Feet)",    reps:"3 × 30-sec holds",  duration:45, level:"advanced" },
-      { id:"adv_04", name:"Elevated Single-Leg Bridges",    reps:"10 each side × 3", duration:50, level:"advanced" },
-      { id:"adv_05", name:"Modified Front Plank",           reps:"3 × 30-sec holds",  duration:45, level:"advanced" },
-      { id:"adv_06", name:"Standing Paloff Press",          reps:"10 each side × 3", duration:50, level:"advanced" },
-      { id:"adv_07", name:"Single-Leg Balance + Bracing",   reps:"30s each leg × 3", duration:45, level:"advanced" },
-    ],
+    exercises: EXERCISES_FULL.filter(e => e.level === "advanced"),
   },
 };
 
 // ── Simulated voice cue hook ───────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  ONBOARDING SURVEY MODAL — 6-Question Diagnostic Intake
+// LOCALSTORAGE HOOKS — Persistent state across refreshes
 // ═══════════════════════════════════════════════════════════════════════════
+function usePersistedState(key, defaultValue) {
+  const [state, setState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+  const setPersisted = useCallback((value) => {
+    try {
+      const newValue = typeof value === "function" ? value(state) : value;
+      setState(newValue);
+      localStorage.setItem(key, JSON.stringify(newValue));
+    } catch (err) {
+      console.error(`Error persisting ${key}:`, err);
+    }
+  }, [state, key]);
+  return [state, setPersisted];
+}
+
+function saveSurveyAnswers(answers) {
+  try {
+    localStorage.setItem("kore_survey_answers", JSON.stringify(answers));
+    localStorage.setItem("kore_survey_completed", "true");
+  } catch (err) {
+    console.error("Error saving survey:", err);
+  }
+}
+
+function loadSurveyAnswers() {
+  try {
+    return JSON.parse(localStorage.getItem("kore_survey_answers")) || null;
+  } catch {
+    return null;
+  }
+}
+
+function hasSurveyBeenCompleted() {
+  return localStorage.getItem("kore_survey_completed") === "true";
+}
+
+function saveUserProgress(userData, level, sessionData) {
+  try {
+    localStorage.setItem("kore_user_data", JSON.stringify(userData));
+    localStorage.setItem("kore_active_level", level);
+    if (sessionData) localStorage.setItem("kore_session_data", JSON.stringify(sessionData));
+  } catch (err) {
+    console.error("Error saving progress:", err);
+  }
+}
+
+function loadUserProgress() {
+  try {
+    return {
+      userData: JSON.parse(localStorage.getItem("kore_user_data")) || {},
+      activeLevel: localStorage.getItem("kore_active_level") || "beginner",
+      sessionData: JSON.parse(localStorage.getItem("kore_session_data")) || null,
+    };
+  } catch {
+    return { userData: {}, activeLevel: "beginner", sessionData: null };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 function OnboardingSurveyModal({ isOpen, onComplete }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
@@ -1179,7 +1361,15 @@ function usePracticeSession(exercise, userName = "love") {
     }
   }, [playNextInQueue, voiceSynth]);
 
-  // Cleanup audio on unmount
+  // ── TOLANI INTRO SCRIPT — Plays for 5-10 seconds at exercise start ────────
+  useEffect(() => {
+    if (phase === "countdown" && countdown === 1) {
+      // Intro script plays as countdown ends
+      if (exercise.tolaniIntro) {
+        speak(exercise.tolaniIntro, "high");
+      }
+    }
+  }, [phase, countdown, exercise.tolaniIntro]);
   useEffect(() => () => {
     // CRITICAL: Stop Tolani from continuing to speak after user exits
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
@@ -1549,6 +1739,11 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
         )}
       </div>
 
+      {/* Instruction Panel */}
+      <div style={{ background: CREAM, padding: "16px 16px 0", maxHeight: 280, overflowY: "auto" }}>
+        <InstructionPanel exercise={exercise} />
+      </div>
+
       {/* Controls */}
       <div style={{ background: "#0D0D0D", padding: "14px 20px 28px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{ marginBottom: 10 }}>
@@ -1663,7 +1858,44 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
   );
 }
 
-// ── Practice Tab root ──────────────────────────────────────────────────────
+// ── Instruction Panel Component ────────────────────────────────────────────
+function InstructionPanel({ exercise }) {
+  const [expanded, setExpanded] = useState(true);
+  
+  return (
+    <div style={{ background: WHITE, borderRadius: 12, border: `1px solid ${BORDER}`, marginBottom: 16, overflow: "hidden" }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          width: "100%",
+          padding: "14px 16px",
+          background: PLUM_PALE,
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontSize: 14,
+          fontWeight: 600,
+          color: PLUM_DARK,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <span>📋 Step-by-step instructions</span>
+        <span style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}>▼</span>
+      </button>
+      {expanded && (
+        <div style={{ padding: "16px" }}>
+          {exercise.steps?.map((step, i) => (
+            <div key={i} style={{ marginBottom: i === exercise.steps.length - 1 ? 0 : 12, fontSize: 13, color: TEXT_DARK, lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>
+              <span style={{ fontWeight: 600, color: PLUM }}>{step.split(":")[0]}:</span> {step.split(":").slice(1).join(":").trim()}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function PracticeTab({ userData }) {
   const [view, setView]         = useState("library");
   const [activeLevel, setLevel] = useState("beginner");
@@ -2239,9 +2471,9 @@ function ResourcesTab({ onHowItWorks }) {
 export default function App() {
   const [screen, setScreen] = useState("landing");
   const [onboardStep, setOnboardStep] = useState(1);
-  const [userData, setUserData] = useState({});
+  const [userData, setUserData] = usePersistedState("kore_user_data", {});
   const [activeTab, setActiveTab] = useState("home");
-  const [showSurvey, setShowSurvey] = useState(true); // Show survey on first app load
+  const [showSurvey, setShowSurvey] = useState(!hasSurveyBeenCompleted()); // Hide if already completed
 
   const goNext = () => { if (onboardStep < 6) setOnboardStep(onboardStep + 1); else setScreen("app"); };
   const goBack = () => { if (onboardStep > 1) setOnboardStep(onboardStep - 1); else setScreen("landing"); };
@@ -2250,6 +2482,7 @@ export default function App() {
 
   const handleSurveyComplete = (surveyAnswers) => {
     setUserData({ ...userData, surveyAnswers });
+    saveSurveyAnswers(surveyAnswers);
     setShowSurvey(false);
   };
 
