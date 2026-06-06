@@ -714,7 +714,7 @@ const EXERCISES_8 = [
     level: "beginner",
     duration: 45,
     reps: "5 rounds × 5 breaths",
-    videoFile: "beg_01_diaphragmatic_breathing.mp4",
+    videoFile: "beg_01_diaphragmatic_breathing.mp4.mp4",
     tolaniIntro: "Close your eyes, love. Place your hands on your tummy, inhale deeply, and imagine gently blowing up a beautiful balloon right through your belly button.",
     steps: [
       "Step 1: Lie on your back, knees bent, feet flat on the floor.",
@@ -730,7 +730,7 @@ const EXERCISES_8 = [
     level: "beginner",
     duration: 45,
     reps: "10 reps × 2 sets",
-    videoFile: "beg_02_glute_bridge.mp4",
+    videoFile: "beg_02_glute_bridge.mp4.mp4",
     tolaniIntro: "Your glutes are your powerhouse, mama. We're waking them up gently. Squeeze like you're holding a coin between your cheeks—firm but kind.",
     steps: [
       "Step 1: Lie on your back, knees bent, feet hip-width apart.",
@@ -746,7 +746,7 @@ const EXERCISES_8 = [
     level: "beginner",
     duration: 45,
     reps: "12 each side × 2 sets",
-    videoFile: "beg_03_toe_taps.mp4",
+    videoFile: "beg_03_toe_taps.mp4.mp4",
     tolaniIntro: "Lie on your back, love. We're going to gently tap one foot down at a time while keeping your core engaged. Light and controlled.",
     steps: [
       "Step 1: Lie on your back, knees bent at ninety degrees, feet hovering off the floor.",
@@ -762,7 +762,7 @@ const EXERCISES_8 = [
     level: "intermediate",
     duration: 50,
     reps: "10 each side × 3",
-    videoFile: "int_01_heel_slides.mp4",
+    videoFile: "int_01_heel_slides.mp4.mp4",
     tolaniIntro: "You're building strength now, sweetheart. Slide one foot out—keep your back flat and your core braced. This is precision work.",
     steps: [
       "Step 1: Lie on your back, knees bent, feet flat on the floor.",
@@ -778,7 +778,7 @@ const EXERCISES_8 = [
     level: "intermediate",
     duration: 55,
     reps: "8 each side × 3",
-    videoFile: "int_03_bird_dog.mp4",
+    videoFile: "int_03_bird_dog.mp4.mp4",
     tolaniIntro: "On your hands and knees, love. We're extending one leg back—keep your hips level, like you're balancing a cup of tea on your lower back.",
     steps: [
       "Step 1: Come to all fours—hands under shoulders, knees under hips.",
@@ -794,7 +794,7 @@ const EXERCISES_8 = [
     level: "intermediate",
     duration: 50,
     reps: "10 each side × 3",
-    videoFile: "int_04_leg_extensions.mp4",
+    videoFile: "int_04_leg_extensions.mp4.mp4",
     tolaniIntro: "On your back, knees bent. We're straightening one leg while keeping the other bent. Slow, controlled movements.",
     steps: [
       "Step 1: Lie on your back, both knees bent, feet flat on the floor.",
@@ -810,7 +810,7 @@ const EXERCISES_8 = [
     level: "advanced",
     duration: 45,
     reps: "3 × 20-sec holds",
-    videoFile: "adv_01_bear_hold.mp4",
+    videoFile: "adv_01_bear_hold.mp4.mp4",
     tolaniIntro: "Hands and feet on the ground, hips low, knees hovering just above the mat. Hold this beast position with power and breath.",
     steps: [
       "Step 1: Come to hands and feet, hands under shoulders, feet under hips.",
@@ -826,7 +826,7 @@ const EXERCISES_8 = [
     level: "advanced",
     duration: 55,
     reps: "8 each side × 3",
-    videoFile: "adv_02_dead_bugs.mp4",
+    videoFile: "adv_02_dead_bugs.mp4.mp4",
     tolaniIntro: "Lie on your back, arms reaching up, knees bent at ninety degrees. We're extending opposite limbs—opposite arm and leg, slow and steady.",
     steps: [
       "Step 1: Lie on your back, arms extended toward the ceiling, knees bent at ninety degrees.",
@@ -1394,7 +1394,7 @@ function midpoint(a, b) {
 // usePracticeSession — Main session hook with real AI tracking
 // ─────────────────────────────────────────────────────────────────────────────
 function usePracticeSession(exercise, userName = "love") {
-  const [phase, setPhase]               = useState("countdown");
+  const [phase, setPhase]               = useState("ready");
   const [countdown, setCount]           = useState(3);
   const [elapsed, setElapsed]           = useState(0);
   const [formScore, setScore]           = useState(100);
@@ -1506,32 +1506,34 @@ function usePracticeSession(exercise, userName = "love") {
     setTimeout(() => { setCorr(null); setPostureError(false); }, 5000);
   }, [speak]);
 
-  // ── 1. CAMERA INIT ───────────────────────────────────────────────────────
-  useEffect(() => {
-    let cleanup = () => {};
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        });
-        streamRef.current = stream;
-        if (cameraRef.current) {
-          cameraRef.current.srcObject = stream;
-          await cameraRef.current.play().catch(() => {});
-        }
-        setCam(true);
-      } catch (err) {
-        setCam(false);
-        setTrackStatus("error");
+  // ── 1. CAMERA INIT — must be called from a user tap (iOS Safari requirement) ─
+  const enableCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (cameraRef.current) {
+        cameraRef.current.srcObject = stream;
+        await cameraRef.current.play().catch(() => {});
       }
-    })();
-    cleanup = () => {
+      setCam(true);
+      return true;
+    } catch (err) {
+      setCam(false);
+      setTrackStatus("error");
+      return false;
+    }
+  }, []);
+
+  // Cleanup camera stream when the session unmounts
+  useEffect(() => {
+    return () => {
       streamRef.current?.getTracks().forEach(t => t.stop());
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (poseRef.current?.close) poseRef.current.close();
     };
-    return cleanup;
   }, []);
 
   // ── 2. MEDIAPIPE INIT (runs once camera is ready) ─────────────────────────
@@ -1738,15 +1740,17 @@ function usePracticeSession(exercise, userName = "love") {
   }, [phase, exercise.duration, exercise.name]);
 
   return {
-    phase, setPhase, countdown, elapsed, formScore, breathPhase,
-    correction, postureError, camGranted, cameraRef, speak, trackingStatus,
+    phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase,
+    correction, postureError, camGranted, cameraRef, speak, trackingStatus, enableCamera,
   };
 }
 
 // ── Session screen ─────────────────────────────────────────────────────────
 function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit, userName = "love" }) {
-  const { phase, setPhase, countdown, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus } = usePracticeSession(exercise, userName);
+  const { phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus, enableCamera } = usePracticeSession(exercise, userName);
   const [workoutMode, setWorkoutMode] = useState("manual"); // manual | automatic
+  const [videoFailed, setVideoFailed] = useState(false);
+  useEffect(() => { setVideoFailed(false); }, [exercise.id]);
   const [nextExerciseBuffer, setNextBuffer] = useState(null); // countdown to next
   const scoreColor = formScore >= 80 ? SAGE_DARK : formScore >= 60 ? "#B45309" : "#DC2626";
   const progress = exercise.duration > 0 ? elapsed / exercise.duration : 0;
@@ -1787,6 +1791,37 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     return () => clearTimeout(t);
   }, [phase]);
 
+  if (phase === "ready") return (
+    <div style={{ background: "#0D0D0D", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
+      <button onClick={onExit} style={{ position: "absolute", top: 16, left: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div style={{ width: 64, height: 64, borderRadius: "50%", background: PLUM, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: WHITE, marginBottom: 12 }}>{exercise.name}</h2>
+      <p style={{ fontSize: 14, color: PLUM_LIGHT, lineHeight: 1.7, maxWidth: 320, marginBottom: 8 }}>
+        KORE uses your camera to check your form in real time and guide you with gentle voice cues.
+      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 28 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <span style={{ fontSize: 12, color: SAGE_DARK }}>Your video never leaves your device.</span>
+      </div>
+      <button
+        onClick={async () => { await enableCamera(); setPhase("countdown"); }}
+        style={{ width: "100%", maxWidth: 320, padding: "15px", borderRadius: 50, background: PLUM, border: "none", color: WHITE, fontFamily: "'Playfair Display', serif", fontSize: 17, cursor: "pointer", marginBottom: 12 }}
+      >
+        Enable Camera & Begin
+      </button>
+      <button
+        onClick={() => setPhase("countdown")}
+        style={{ width: "100%", maxWidth: 320, padding: "13px", borderRadius: 50, background: "rgba(255,255,255,0.08)", border: "none", color: TEXT_LIGHT, fontSize: 14, cursor: "pointer" }}
+      >
+        Continue without camera
+      </button>
+    </div>
+  );
+
   if (phase === "countdown") return (
     <div style={{ background: "#0D0D0D", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, color: PLUM_LIGHT, marginBottom: 16 }}>{exercise.name}</div>
@@ -1810,10 +1845,26 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     <div style={{ background: "#0D0D0D", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Video area */}
       <div style={{ flex: 1, position: "relative", background: `linear-gradient(160deg, ${levelData.bgColor}18, #111)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: WHITE, opacity: 0.8 }}>{exercise.name}</div>
-          <div style={{ fontSize: 13, color: PLUM_LIGHT, marginTop: 4 }}>Instructor video</div>
-        </div>
+        {!videoFailed ? (
+          <video
+            key={exercise.id}
+            src={`/videos/${exercise.videoFile}`}
+            autoPlay
+            loop
+            playsInline
+            muted
+            onError={() => setVideoFailed(true)}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div style={{ textAlign: "center", padding: 24 }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill={PLUM_LIGHT}><polygon points="5,3 19,12 5,21"/></svg>
+            </div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: WHITE, opacity: 0.9, marginBottom: 6 }}>{exercise.name}</div>
+            <div style={{ fontSize: 13, color: PLUM_LIGHT, maxWidth: 260, margin: "0 auto", lineHeight: 1.5 }}>Follow the step-by-step guidance below as Tolani coaches you through.</div>
+          </div>
+        )}
 
         {/* Exit */}
         <button onClick={onExit} style={{ position: "absolute", top: 16, left: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -2111,12 +2162,41 @@ function PracticeTab({ userData }) {
   );
 
   // ── Library view ─────────────────────────────────────────────────────────
+  const recommended = EXERCISE_LEVELS_8[activeLevel].exercises.slice(0, 3);
+  const recMinutes = Math.max(1, Math.round(recommended.reduce((s, e) => s + e.duration, 0) / 60));
+  const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long" });
   return (
     <div style={{ background: CREAM, paddingBottom: 80 }}>
       <div style={{ padding: "24px 20px 0" }}>
         <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Exercise library</div>
         <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 6 }}>Your healing programme</h1>
-        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 20 }}>21 clinically approved exercises, guided by real-time AI posture tracking.</p>
+        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 20 }}>8 clinically approved exercises, guided by real-time AI posture tracking.</p>
+      </div>
+
+      {/* Today's recommended practice */}
+      <div style={{ padding: "0 20px", marginBottom: 20 }}>
+        <div style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 18, padding: "22px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", right: -24, top: -24, width: 110, height: 110, borderRadius: "50%", background: WHITE, opacity: 0.06 }} />
+          <div style={{ fontSize: 11, color: PLUM_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Suggested for {todayLabel}</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: WHITE, marginBottom: 6 }}>Today's Practice</div>
+          <div style={{ fontSize: 13, color: PLUM_LIGHT, marginBottom: 16 }}>{recMinutes} min · {recommended.length} exercises picked for your {levelData.label.toLowerCase()} level</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+            {recommended.map((ex, i) => (
+              <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.15)", color: WHITE, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                <span style={{ fontSize: 13, color: WHITE }}>{ex.name}</span>
+                <span style={{ fontSize: 12, color: PLUM_LIGHT, marginLeft: "auto" }}>{ex.reps}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => { setSessionList(recommended); setSessionIdx(0); setSelected(recommended[0]); setView("session"); }}
+            style={{ width: "100%", padding: "14px", borderRadius: 50, background: WHITE, border: "none", color: PLUM_DARK, fontFamily: "'Playfair Display', serif", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill={PLUM_DARK}><polygon points="5,3 19,12 5,21"/></svg>
+            Begin Today's Practice
+          </button>
+        </div>
       </div>
 
       {/* Level tabs */}
