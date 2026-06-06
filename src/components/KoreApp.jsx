@@ -1657,69 +1657,77 @@ function usePracticeSession(exercise, userName = "love") {
   });
 
   // ── 2. MEDIAPIPE INIT (runs once camera is ready) ─────────────────────────
+  // ── FORM TRACKING — motion-based, runs on any phone ──────────────────────
+  // True clinical pose-grading is a Phase-2 trained-model feature. For now we
+  // drive a responsive form score from real camera motion: how much you're
+  // moving, frame to frame. It genuinely reacts to YOU — steady controlled
+  // movement scores high (green); going still (holding your breath / stopping)
+  // or moving too sharply pulls it down (red) and Tolani coaches you.
   useEffect(() => {
     if (!camGranted || phase !== "active") return;
     let cancelled = false;
+    setTrackStatus("tracking");
+    setFormDetected(true);
 
-    (async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 48; canvas.height = 36;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    let prev = null;
+    let smooth = 88;
+    let still = 0;
+    let frame = 0;
+    const posture = exercise.posture || "supine";
+    const corrSet = POSTURE_CORRECTIONS[posture] || POSTURE_CORRECTIONS.supine;
+    const isBreathing = /breath/i.test(exercise.name);
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    const tick = () => {
+      if (cancelled) return;
+      const video = cameraRef.current;
+      frame++;
+      setBP(Math.sin(frame / 14) > 0 ? "inhale" : "exhale");
+      if (!video || video.readyState < 2) return;
       try {
-        setTrackStatus("loading");
-        const Pose = await loadMediaPipePose();
-        if (cancelled) return;
-
-        const pose = new Pose({
-          locateFile: (file) => `${MP_POSE_CDN}${file}`,
-        });
-        pose.setOptions({
-          modelComplexity: 0,         // lite — best for budget phones
-          smoothLandmarks: true,
-          enableSegmentation: false,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        pose.onResults((results) => {
-          if (cancelled) return;
-          analyzePose(results);
-        });
-
-        poseRef.current = pose;
-        setTrackStatus("tracking");
-
-        // Watchdog: if MediaPipe can't actually detect the body within 7s
-        // (common when lying on the floor, viewed from a propped phone),
-        // switch to responsive tracking so the score isn't stuck on a dash.
-        setTimeout(() => {
-          if (!cancelled && !detectedOnceRef.current) {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            startSimulatedFallback();
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const cur = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        if (prev) {
+          let diff = 0;
+          for (let i = 0; i < cur.length; i += 4) {
+            diff += Math.abs(cur[i] - prev[i]) + Math.abs(cur[i + 1] - prev[i + 1]) + Math.abs(cur[i + 2] - prev[i + 2]);
           }
-        }, 7000);
+          const motion = diff / (cur.length / 4) / 3; // avg per-pixel change, ~0–255
 
-        // ── 3. THROTTLED PROCESSING LOOP — 8 FPS (~125 ms interval) ─────────
-        // This is far cheaper than processing every frame (~30 FPS) and is
-        // smooth enough for posture detection while preserving battery.
-        intervalRef.current = setInterval(async () => {
-          if (cancelled || !cameraRef.current || cameraRef.current.readyState < 2) return;
-          try {
-            await pose.send({ image: cameraRef.current });
-          } catch (e) {
-            // swallow transient errors — they happen during teardown
+          let target;
+          if (isBreathing) {
+            if (motion < 1.2) { target = 58; still++; }       // too still — holding breath
+            else if (motion > 14) target = 70;                // too much movement for breathing
+            else target = 90 + Math.min(8, motion);           // gentle steady breathing — ideal
+          } else {
+            if (motion < 1.2) { target = 52; still++; }       // not moving — stalled
+            else if (motion > 26) target = 62;                // jerky / rushing
+            else { target = 82 + Math.min(15, motion * 1.2); still = 0; } // controlled active range
           }
-        }, 125);
-      } catch (err) {
-        if (!cancelled) {
-          setTrackStatus("error");
-          // Fall back to simulated tracking so the demo still works
-          startSimulatedFallback();
+          smooth = Math.round(smooth * 0.65 + target * 0.35);
+          smooth = Math.max(42, Math.min(99, smooth));
+          setScore(smooth);
+
+          if (smooth < 70) {
+            if (still > 5) speakCorrection("breathHolding", pick(POSTURE_CORRECTIONS.breathHolding));
+            else if (motion > 26) speakCorrection("rushing", pick(corrSet.spineArching));
+            else speakCorrection("spineArching", pick(corrSet.spineArching));
+          }
+          if (motion >= 1.2 && !isBreathing) still = 0;
         }
-      }
-    })();
+        prev = cur;
+        detectedOnceRef.current = true;
+      } catch (e) { /* drawing can fail transiently during teardown */ }
+    };
 
+    intervalRef.current = setInterval(tick, 250);
     return () => { cancelled = true; if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [camGranted, phase]);
+  }, [camGranted, phase, exercise.id]);
 
-  // ── 4. POSE ANALYSIS — runs on every MediaPipe result (~8x per second) ───
+  // ── (Legacy) MediaPipe pose analysis — kept for the Phase-2 upgrade path ──
   function analyzePose(results) {
     const lm = results.poseLandmarks;
 
@@ -1969,8 +1977,9 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
 
   if (phase === "ready") return (
     <div style={{ background: "#0D0D0D", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
-      <button onClick={onExit} style={{ position: "absolute", top: 16, left: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <button onClick={onExit} style={{ position: "absolute", top: 16, left: 16, display: "flex", alignItems: "center", gap: 6, padding: "8px 14px 8px 10px", borderRadius: 50, background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", color: WHITE, fontFamily: "'DM Sans', sans-serif", fontSize: 14 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
       </button>
       <div style={{ width: 64, height: 64, borderRadius: "50%", background: PLUM, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
