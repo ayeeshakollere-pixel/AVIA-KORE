@@ -615,7 +615,7 @@ function Step6({ onNext, onBack, data, setData }) {
 }
 
 // ─── Home Tab ─────────────────────────────────────────────────────────────────
-function HomeTab({ userData, setActiveTab }) {
+function HomeTab({ userData, setActiveTab, onOpenPlan }) {
   const name = userData?.name || "Maya";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -627,13 +627,24 @@ function HomeTab({ userData, setActiveTab }) {
   const fillD = pathD + ` L${pts[pts.length - 1][0]},${chartH} L${pts[0][0]},${chartH} Z`;
   const labels = ["Apr 12", "Apr 14", "Apr 16", "Apr 18", "Apr 20", "Apr 22", "Apr 23", "Today"];
 
+  // Live subscription status for the plan card
+  const _sub = getSubscription();
+  const _paid = new Date(_sub.paymentDate);
+  const _daysSince = Math.floor((Date.now() - _paid.getTime()) / 86400000);
+  const _cycle = _sub.stage === "foundation" ? 56 : 30;
+  const _daysLeft = Math.max(0, _cycle - _daysSince);
+
   return (
     <div style={{ padding: "24px 24px 0" }}>
       <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{greeting}, {name}</div>
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 24 }}>You're healing beautifully.</h2>
 
-      <div onClick={() => setActiveTab && setActiveTab("practice")} style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, cursor: "pointer" }}>
-        <div><div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 }}>Your plan</div><div style={{ fontSize: 16, fontWeight: 500, color: TEXT_DARK }}>Monthly Maintenance</div></div>
+      <div onClick={() => onOpenPlan && onOpenPlan()} style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, cursor: "pointer" }}>
+        <div>
+          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 }}>Your plan</div>
+          <div style={{ fontSize: 16, fontWeight: 500, color: TEXT_DARK }}>Monthly Maintenance</div>
+          <div style={{ fontSize: 12, color: SAGE_DARK, marginTop: 3 }}>● Active · {_daysSince} days in · renews in {_daysLeft} days</div>
+        </div>
         <span style={{ color: TEXT_LIGHT, fontSize: 18 }}>›</span>
       </div>
 
@@ -1402,6 +1413,7 @@ function usePracticeSession(exercise, userName = "love") {
   const [correction, setCorr]           = useState(null);
   const [postureError, setPostureError] = useState(false);
   const [camGranted, setCam]            = useState(false);
+  const [formDetected, setFormDetected] = useState(false);
   const [trackingStatus, setTrackStatus] = useState("loading"); // loading | tracking | low-light | error
   const cameraRef                       = useRef(null);
   const streamRef                       = useRef(null);
@@ -1419,6 +1431,38 @@ function usePracticeSession(exercise, userName = "love") {
   const voiceQueueRef     = useRef([]);
   const voiceIsSpeakingRef = useRef(false);
   const voiceSynth        = typeof window !== "undefined" ? window.speechSynthesis : null;
+
+  // ── iOS AUDIO UNLOCK — must run inside a user tap so audio can play later ──
+  // iPhone Safari blocks all audio until the user interacts. We prime BOTH the
+  // HTMLAudio element (ElevenLabs path) and speechSynthesis (fallback) on tap.
+  const unlockAudio = useCallback(() => {
+    try {
+      if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.volume = 1.0;
+      // Generate a tiny valid silent WAV and play it to unlock the element
+      const sr = 8000, n = Math.floor(sr * 0.05);
+      const buf = new ArrayBuffer(44 + n * 2);
+      const dv = new DataView(buf);
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+      ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true);
+      dv.setUint16(34, 16, true); ws(36, "data"); dv.setUint32(40, n * 2, true);
+      const url = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+      audioRef.current.src = url;
+      audioRef.current.play().then(() => {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }).catch(() => {});
+    } catch (e) {}
+    try {
+      if (voiceSynth) {
+        const u = new SpeechSynthesisUtterance(" ");
+        u.volume = 1.0;
+        voiceSynth.speak(u);
+      }
+    } catch (e) {}
+  }, [voiceSynth]);
 
   // Browser voice fallback (only used if ElevenLabs fails)
   const speakBrowser = useCallback((text) => {
@@ -1447,6 +1491,7 @@ function usePracticeSession(exercise, userName = "love") {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.volume = 1.0;
       audioRef.current.src = url;
       audioRef.current.onended = () => { URL.revokeObjectURL(url); playNextInQueue(); };
       audioRef.current.onerror = () => { URL.revokeObjectURL(url); playNextInQueue(); };
@@ -1536,6 +1581,16 @@ function usePracticeSession(exercise, userName = "love") {
     };
   }, []);
 
+  // Re-attach the stream whenever the camera <video> element appears.
+  // enableCamera() runs on the permission screen BEFORE the PiP video exists,
+  // so we must wire the stream to the element once it actually mounts.
+  useEffect(() => {
+    if (camGranted && streamRef.current && cameraRef.current && !cameraRef.current.srcObject) {
+      cameraRef.current.srcObject = streamRef.current;
+      cameraRef.current.play().catch(() => {});
+    }
+  });
+
   // ── 2. MEDIAPIPE INIT (runs once camera is ready) ─────────────────────────
   useEffect(() => {
     if (!camGranted || phase !== "active") return;
@@ -1597,6 +1652,7 @@ function usePracticeSession(exercise, userName = "love") {
     // MediaPipe returns null landmarks when it can't detect a body, often
     // because of poor lighting. Each landmark also has a `visibility` score.
     if (!lm || lm.length < 29) {
+      setFormDetected(false);
       handleLowLight();
       return;
     }
@@ -1606,9 +1662,13 @@ function usePracticeSession(exercise, userName = "love") {
     const meanVis = coreIndices.reduce((s, i) => s + (lm[i]?.visibility || 0), 0) / coreIndices.length;
 
     if (meanVis < 0.5) {
+      setFormDetected(false);
       handleLowLight();
       return;
     }
+
+    // Tracking is healthy — we can see the body
+    setFormDetected(true);
 
     // Tracking is healthy
     if (trackingStatus !== "tracking") setTrackStatus("tracking");
@@ -1678,6 +1738,7 @@ function usePracticeSession(exercise, userName = "love") {
   function startSimulatedFallback() {
     let frame = 0;
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    setFormDetected(true);
     const tick = () => {
       frame++;
       setBP(Math.sin(frame / 18) > 0 ? "inhale" : "exhale");
@@ -1692,7 +1753,7 @@ function usePracticeSession(exercise, userName = "love") {
   // ── COUNTDOWN ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (countdown === 3) speak("Take a moment to get into position. Whenever you're ready, let's begin.", "high");
+    if (countdown === 3) speak(`Take a moment to get into position, ${userName && userName !== "love" ? userName : "mama"}. Whenever you're ready, let's begin.`, "high");
     if (countdown <= 0) { setPhase("active"); return; }
     const t = setTimeout(() => setCount(c => c - 1), 1000);
     return () => clearTimeout(t);
@@ -1702,52 +1763,57 @@ function usePracticeSession(exercise, userName = "love") {
   useEffect(() => {
     if (phase !== "active") return;
 
-    // ── BREATH COACHING — Tolani speaks rhythmic cues throughout ────────
-    // Pulls per-exercise script from BREATH_COACHING and loops through cues
-    // at the exercise's natural rep tempo.
-    const breathScript = BREATH_COACHING[exercise.name];
-    let breathTimer = null;
+    // ── CONTINUOUS BREATH COACHING — works for every exercise ───────────────
+    // Mothers forget to breathe, so Tolani keeps a steady rhythm going by name.
+    const nm = userName && userName !== "love" ? userName : "mama";
+    const breathCues = [
+      `Breathe in slowly through your nose, ${nm}...`,
+      "And breathe out gently... let your belly draw in.",
+      `Keep breathing, ${nm} — in through the nose...`,
+      "Slow breath out... engage your deep core as you exhale.",
+      "Inhale, soften your belly...",
+      `Exhale fully, ${nm}. Gently hug your tummy in.`,
+      "Don't hold your breath — in...",
+      "...and out. Beautiful, steady rhythm.",
+    ];
     let breathCueIndex = 0;
-    if (breathScript) {
-      // First cue 2 seconds in (after countdown ends)
-      const fireBreathCue = () => {
-        const cue = breathScript.cues[breathCueIndex % breathScript.cues.length];
-        speak(cue);
-        breathCueIndex++;
-      };
-      const startDelay = setTimeout(() => {
-        fireBreathCue();
-        breathTimer = setInterval(fireBreathCue, breathScript.cycleGap * 1000);
-      }, 2000);
-      // Cleanup includes startDelay
-      var cleanupBreath = () => { clearTimeout(startDelay); if (breathTimer) clearInterval(breathTimer); };
-    }
+    let breathTimer = null;
+    const fireBreathCue = () => {
+      speak(breathCues[breathCueIndex % breathCues.length]);
+      breathCueIndex++;
+    };
+    // Start ~7s in (after the intro finishes), then every 9s throughout
+    const startDelay = setTimeout(() => {
+      fireBreathCue();
+      breathTimer = setInterval(fireBreathCue, 9000);
+    }, 7000);
+    const cleanupBreath = () => { clearTimeout(startDelay); if (breathTimer) clearInterval(breathTimer); };
 
     const timer = setInterval(() => {
       setElapsed(e => {
         if (e + 1 >= exercise.duration) {
           clearInterval(timer);
-          if (cleanupBreath) cleanupBreath();
+          cleanupBreath();
           if (intervalRef.current) clearInterval(intervalRef.current);
           setPhase("rest");
-          speak("Wonderful. That's one exercise complete. Take a gentle breath.", "high");
+          speak(`Wonderful, ${nm}. That's one exercise complete. Take a gentle breath.`, "high");
           return e + 1;
         }
         return e + 1;
       });
     }, 1000);
-    return () => { clearInterval(timer); if (cleanupBreath) cleanupBreath(); };
-  }, [phase, exercise.duration, exercise.name]);
+    return () => { clearInterval(timer); cleanupBreath(); };
+  }, [phase, exercise.duration, exercise.name, userName]);
 
   return {
     phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase,
-    correction, postureError, camGranted, cameraRef, speak, trackingStatus, enableCamera,
+    correction, postureError, camGranted, cameraRef, speak, trackingStatus, enableCamera, unlockAudio, formDetected,
   };
 }
 
 // ── Session screen ─────────────────────────────────────────────────────────
 function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit, userName = "love" }) {
-  const { phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus, enableCamera } = usePracticeSession(exercise, userName);
+  const { phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus, enableCamera, unlockAudio, formDetected } = usePracticeSession(exercise, userName);
   const [workoutMode, setWorkoutMode] = useState("manual"); // manual | automatic
   const [videoFailed, setVideoFailed] = useState(false);
   useEffect(() => { setVideoFailed(false); }, [exercise.id]);
@@ -1808,13 +1874,13 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
         <span style={{ fontSize: 12, color: SAGE_DARK }}>Your video never leaves your device.</span>
       </div>
       <button
-        onClick={async () => { await enableCamera(); setPhase("countdown"); }}
+        onClick={async () => { unlockAudio(); await enableCamera(); setPhase("countdown"); }}
         style={{ width: "100%", maxWidth: 320, padding: "15px", borderRadius: 50, background: PLUM, border: "none", color: WHITE, fontFamily: "'Playfair Display', serif", fontSize: 17, cursor: "pointer", marginBottom: 12 }}
       >
         Enable Camera & Begin
       </button>
       <button
-        onClick={() => setPhase("countdown")}
+        onClick={() => { unlockAudio(); setPhase("countdown"); }}
         style={{ width: "100%", maxWidth: 320, padding: "13px", borderRadius: 50, background: "rgba(255,255,255,0.08)", border: "none", color: TEXT_LIGHT, fontSize: 14, cursor: "pointer" }}
       >
         Continue without camera
@@ -1874,7 +1940,7 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
         {/* Form score */}
         <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(0,0,0,0.65)", borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
           <div style={{ fontSize: 10, color: PLUM_LIGHT, marginBottom: 2 }}>FORM</div>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: scoreColor }}>{formScore}</div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: (camGranted && formDetected) ? scoreColor : TEXT_LIGHT }}>{(camGranted && formDetected) ? formScore : "—"}</div>
         </div>
 
         {/* PiP camera */}
@@ -2692,6 +2758,126 @@ function ResourcesTab({ onHowItWorks }) {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 // ════════════════════════════════════════════════════════════════════════════════
+// SUBSCRIPTION / PLAN — pricing + payment tracking (localStorage)
+// ════════════════════════════════════════════════════════════════════════════════
+function getSubscription() {
+  try {
+    let paymentDate = localStorage.getItem("kore_payment_date");
+    if (!paymentDate) {
+      // Seed an established subscription (12 days ago) so the demo looks active
+      const seeded = new Date(Date.now() - 12 * 86400000).toISOString();
+      localStorage.setItem("kore_payment_date", seeded);
+      localStorage.setItem("kore_plan_stage", "foundation");
+      paymentDate = seeded;
+    }
+    const stage = localStorage.getItem("kore_plan_stage") || "foundation";
+    return { paymentDate, stage };
+  } catch {
+    return { paymentDate: new Date().toISOString(), stage: "foundation" };
+  }
+}
+
+function setSubscription(stage) {
+  try {
+    localStorage.setItem("kore_payment_date", new Date().toISOString());
+    localStorage.setItem("kore_plan_stage", stage);
+  } catch {}
+}
+
+function PlanScreen({ onBack }) {
+  const [sub, setSub] = useState(getSubscription());
+  const paid = new Date(sub.paymentDate);
+  const daysSince = Math.floor((Date.now() - paid.getTime()) / 86400000);
+  const cycleDays = sub.stage === "foundation" ? 56 : 30; // 8 weeks vs monthly
+  const daysLeft = Math.max(0, cycleDays - daysSince);
+  const renewalDate = new Date(paid.getTime() + cycleDays * 86400000);
+  const pct = Math.min(100, Math.round((daysSince / cycleDays) * 100));
+
+  const activate = (stage) => { setSubscription(stage); setSub(getSubscription()); };
+
+  return (
+    <div style={{ minHeight: "100vh", background: CREAM }}>
+      <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10 }}>
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 14 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Home
+        </button>
+        <KoreLogo size={28} />
+      </div>
+
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "28px 22px 60px" }}>
+        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Your subscription</div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: TEXT_DARK, marginBottom: 20 }}>Monthly Maintenance</h1>
+
+        {/* Active status card */}
+        <div style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 18, padding: "24px 24px", marginBottom: 24, color: WHITE, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", right: -24, top: -24, width: 120, height: 120, borderRadius: "50%", background: WHITE, opacity: 0.06 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ADE80" }} />
+            <span style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: PLUM_LIGHT }}>Active · {sub.stage === "foundation" ? "8-Week Foundation" : "Monthly Plan"}</span>
+          </div>
+          <div style={{ display: "flex", gap: 24, marginBottom: 18 }}>
+            <div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 34 }}>{daysSince}</div>
+              <div style={{ fontSize: 12, color: PLUM_LIGHT }}>days since payment</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 34 }}>{daysLeft}</div>
+              <div style={{ fontSize: 12, color: PLUM_LIGHT }}>days until renewal</div>
+            </div>
+          </div>
+          <div style={{ height: 6, background: "rgba(255,255,255,0.15)", borderRadius: 6, overflow: "hidden", marginBottom: 8 }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: WHITE, borderRadius: 6 }} />
+          </div>
+          <div style={{ fontSize: 12, color: PLUM_LIGHT }}>Renews on {renewalDate.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</div>
+        </div>
+
+        {/* Pricing cards */}
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 12 }}>The 2-stage recovery plan</div>
+
+        <div style={{ background: WHITE, borderRadius: 16, border: `2px solid ${PLUM}`, padding: "20px 22px", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 11, color: PLUM, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Stage 1 · Mandatory</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK }}>8-Week Foundation Pass</div>
+            </div>
+            <span style={{ background: PLUM_PALE, color: PLUM, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 20 }}>One-time</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, color: TEXT_DARK }}>₦12,000</span>
+            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $8.73 USD</span>
+          </div>
+          <p style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>Covers the mandatory 8-week healing window for abdominal separation — long enough to see real, measurable progress before you continue.</p>
+          <button onClick={() => activate("foundation")} style={{ width: "100%", padding: "13px", borderRadius: 50, background: PLUM, border: "none", color: WHITE, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Activate Foundation Pass</button>
+        </div>
+
+        <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: "20px 22px", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 11, color: SAGE_DARK, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Stage 2 · Ongoing</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK }}>Monthly Maintenance</div>
+            </div>
+            <span style={{ background: SAGE, color: SAGE_DARK, fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 20 }}>Recurring</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, color: TEXT_DARK }}>₦7,500</span>
+            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $5.46 USD / month</span>
+          </div>
+          <p style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>Unlocks advanced progressions, Mama Circles community, and continuous access to the Myth-Buster bot for long-term core health.</p>
+          <button onClick={() => activate("maintenance")} style={{ width: "100%", padding: "13px", borderRadius: 50, background: WHITE, border: `1px solid ${PLUM}`, color: PLUM, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Switch to Monthly</button>
+        </div>
+
+        <div style={{ background: SAGE, borderRadius: 14, padding: "14px 18px", display: "flex", gap: 10, alignItems: "center" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <span style={{ fontSize: 13, color: TEXT_MID }}>Prices shown in Nigerian Naira with live USD equivalents for easy global access.</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
 // MYTH-BUSTER BOT — AI-Ready Cultural Myth Debunker for Demo
 // ════════════════════════════════════════════════════════════════════════════════
 const MYTH_BUSTER_DB = {
@@ -2862,6 +3048,10 @@ export default function App() {
     <><style>{fonts}{globalStyle}</style><HowItWorks onBack={exitHowItWorks} onBegin={startOnboard} backLabel={howItWorksFrom === "app" ? "Back to Resources" : "Back to Home"} /></>
   );
 
+  if (screen === "plan") return (
+    <><style>{fonts}{globalStyle}</style><PlanScreen onBack={() => { setScreen("app"); setActiveTab("home"); }} /></>
+  );
+
   if (screen === "onboard") {
     const steps = [Step1, Step2, Step3, Step4, Step5, Step6];
     const StepComp = steps[onboardStep - 1];
@@ -2871,7 +3061,7 @@ export default function App() {
   }
 
   const tabMap = {
-    home: <HomeTab userData={userData} setActiveTab={setActiveTab} />,
+    home: <HomeTab userData={userData} setActiveTab={setActiveTab} onOpenPlan={() => setScreen("plan")} />,
     practice: <PracticeTab userData={userData} />,
     checkin: <CheckinTab />,
     circle: <CircleTab />,
