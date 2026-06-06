@@ -726,6 +726,7 @@ function HomeTab({ userData, setActiveTab, onOpenPlan }) {
 const EXERCISES_8 = [
   {
     id: "beg_01",
+    posture: "supine",
     name: "Diaphragmatic Breathing",
     level: "beginner",
     duration: 45,
@@ -742,6 +743,7 @@ const EXERCISES_8 = [
   },
   {
     id: "beg_02",
+    posture: "supine",
     name: "Glute Bridges",
     level: "beginner",
     duration: 45,
@@ -758,6 +760,7 @@ const EXERCISES_8 = [
   },
   {
     id: "beg_03",
+    posture: "supine",
     name: "Toe Taps",
     level: "beginner",
     duration: 45,
@@ -774,6 +777,7 @@ const EXERCISES_8 = [
   },
   {
     id: "int_01",
+    posture: "supine",
     name: "Heel Slides",
     level: "intermediate",
     duration: 50,
@@ -790,6 +794,7 @@ const EXERCISES_8 = [
   },
   {
     id: "int_03",
+    posture: "quadruped",
     name: "Bird-Dog",
     level: "intermediate",
     duration: 55,
@@ -806,6 +811,7 @@ const EXERCISES_8 = [
   },
   {
     id: "int_04",
+    posture: "supine",
     name: "Leg Extensions",
     level: "intermediate",
     duration: 50,
@@ -822,6 +828,7 @@ const EXERCISES_8 = [
   },
   {
     id: "adv_01",
+    posture: "plank",
     name: "Bear Hold",
     level: "advanced",
     duration: 45,
@@ -838,6 +845,7 @@ const EXERCISES_8 = [
   },
   {
     id: "adv_02",
+    posture: "supine",
     name: "Dead Bugs",
     level: "advanced",
     duration: 55,
@@ -1335,23 +1343,46 @@ const BREATH_COACHING = {
 };
 
 // ── Plain-language posture corrections (warm, body-relatable, no jargon) ─
-const PLAIN_CORRECTIONS = {
-  spineArching: [
-    "Press your lower back down into the mat, mama. Imagine you're trying to squeeze a coin between your back and the floor.",
-    "Your back is lifting a bit — gently push it down flat. There. Much better.",
-    "Soften your back into the mat, my love. Let it melt down.",
-  ],
-  pelvicTilt: [
-    "Your hips are leaning to one side — try to keep them even, like you're lying perfectly flat on a tray.",
-    "Bring your hips back to centre, sweetheart. Even and balanced.",
-    "Don't let one hip drop. Keep them level, both kissing the mat the same way.",
-  ],
+// Posture-aware corrections — what's right for lying down is wrong for a plank.
+const POSTURE_CORRECTIONS = {
+  supine: {
+    spineArching: [
+      "Press your lower back gently into the mat, mama.",
+      "Your back is lifting a little — ease it down flat onto the floor.",
+      "Soften your back into the mat, my love. Let it melt down.",
+    ],
+    pelvicTilt: [
+      "Keep your hips even, both resting on the mat the same way.",
+      "Bring your hips back to centre, sweetheart. Balanced and level.",
+    ],
+  },
+  quadruped: {
+    spineArching: [
+      "Keep your back long and flat like a tabletop — don't let it dip.",
+      "Don't let your belly sag, mama. Gently draw it up toward your spine.",
+      "Lengthen your back, soft and level from head to hips.",
+    ],
+    pelvicTilt: [
+      "Keep your hips square and level — try not to twist to one side.",
+      "Steady your hips, like you're balancing a cup of tea on your lower back.",
+    ],
+  },
+  plank: {
+    spineArching: [
+      "Keep your hips level with your shoulders — don't let your back sag.",
+      "Don't pike your hips up. Hold one straight line from head to knees.",
+      "Engage your tummy and keep your body long and steady, mama.",
+    ],
+    pelvicTilt: [
+      "Keep both hips level — don't let one side drop.",
+      "Square your hips, mama. Strong and even.",
+    ],
+  },
   breathHolding: [
-    "Don't forget to breathe, my love. Open your mouth a little and let the air flow out.",
-    "Keep breathing, mama. Hold your breath, you hold your tension. Let it flow.",
-    "I can hear you holding your breath. Breathe steady — your body needs that air.",
+    "Don't forget to breathe, my love. Let the air flow out.",
+    "Keep breathing, mama — when you hold your breath, you hold your tension.",
+    "Breathe steady, mama. Your body needs that air.",
   ],
-  lowLight: [], // populated dynamically with user name
 };
 // ─────────────────────────────────────────────────────────────────────────────
 // MEDIAPIPE POSE TRACKING — On-device computer vision
@@ -1742,17 +1773,19 @@ function usePracticeSession(exercise, userName = "love") {
     // ── DETECT ISSUES AND FIRE CORRECTIONS ──────────────────────────────
     let penalty = 0;
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const posture = exercise.posture || "supine";
+    const corrSet = POSTURE_CORRECTIONS[posture] || POSTURE_CORRECTIONS.supine;
 
     // Spine arching: angle drops too low (torso bent backward at hip)
     if (spineAngle < 145) {
       penalty += 20;
-      speakCorrection("spineArching", pick(PLAIN_CORRECTIONS.spineArching));
+      speakCorrection("spineArching", pick(corrSet.spineArching));
     }
 
     // Pelvic tilt: hips visibly uneven
     if (hipLevelDiff > 0.06) {
       penalty += 15;
-      speakCorrection("pelvicTilt", pick(PLAIN_CORRECTIONS.pelvicTilt));
+      speakCorrection("pelvicTilt", pick(corrSet.pelvicTilt));
     }
 
     // Breath holding: no torso movement for ~2 seconds
@@ -1760,7 +1793,7 @@ function usePracticeSession(exercise, userName = "love") {
       breathHoldRef.current++;
       if (breathHoldRef.current > 8) {
         penalty += 12;
-        speakCorrection("breathHolding", pick(PLAIN_CORRECTIONS.breathHolding));
+        speakCorrection("breathHolding", pick(POSTURE_CORRECTIONS.breathHolding));
       }
     } else {
       breathHoldRef.current = 0;
@@ -1783,13 +1816,15 @@ function usePracticeSession(exercise, userName = "love") {
   function startSimulatedFallback() {
     let frame = 0;
     const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const posture = exercise.posture || "supine";
+    const corrSet = POSTURE_CORRECTIONS[posture] || POSTURE_CORRECTIONS.supine;
     setFormDetected(true);
     const tick = () => {
       frame++;
       setBP(Math.sin(frame / 18) > 0 ? "inhale" : "exhale");
       const r = Math.random();
-      if (r > 0.97) speakCorrection("spineArching", pick(PLAIN_CORRECTIONS.spineArching));
-      if (r < 0.02) speakCorrection("breathHolding", pick(PLAIN_CORRECTIONS.breathHolding));
+      if (r > 0.97) speakCorrection("spineArching", pick(corrSet.spineArching));
+      if (r < 0.02) speakCorrection("breathHolding", pick(POSTURE_CORRECTIONS.breathHolding));
       setScore(Math.max(0, 100 - (r > 0.96 ? 18 : 0)));
     };
     intervalRef.current = setInterval(tick, 200);
@@ -1835,13 +1870,17 @@ function usePracticeSession(exercise, userName = "love") {
           // Rep counting WITH breath built in, so it never collides
           repCount++;
           setReps(r => Math.min(repTarget, r + 1));
-          const phrases = [
-            `Exhale and move... that's ${repCount}. Beautiful.`,
-            `Breathe out... ${repCount}. Keep your core gently engaged.`,
-            `And ${repCount}... inhale as you reset, ${nm}.`,
-            `${repCount}. Lovely control. Don't hold your breath.`,
-          ];
-          speak(phrases[(repCount - 1) % phrases.length]);
+          if (repCount >= repTarget) {
+            speak(`And ${repCount}... that's your last one, ${nm}. Beautiful work.`, "high");
+          } else {
+            const phrases = [
+              `Exhale and move... that's ${repCount}. Beautiful.`,
+              `Breathe out... ${repCount}. Keep your core gently engaged.`,
+              `And ${repCount}... inhale as you reset, ${nm}.`,
+              `${repCount}. Lovely control. Don't hold your breath.`,
+            ];
+            speak(phrases[(repCount - 1) % phrases.length]);
+          }
         }
       };
       fire();
@@ -1910,8 +1949,11 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     }
 
     if (workoutMode === "automatic") {
-      speak("Beautiful. Get ready for the next one.", "high");
-      let c = 5;
+      const nextName = sessionList[currentIdx + 1]?.name || "the next exercise";
+      // Gentle hand-off: name the next exercise, pause ~3s, then it begins
+      // (the soft how-to intro then plays during that exercise's countdown).
+      speak(`Lovely. Take a breath, ${userName && userName !== "love" ? userName : "mama"}. Coming up next is ${nextName}.`, "high");
+      let c = 3;
       setNextBuffer(c);
       const timer = setInterval(() => {
         c--;
@@ -2084,10 +2126,12 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
         {phase === "rest" && currentIdx < sessionList.length - 1 && (
           workoutMode === "automatic" ? (
             <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 4 }}>Coming up next</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: WHITE, marginBottom: 8 }}>{sessionList[currentIdx + 1]?.name}</div>
               <div style={{ fontSize: 14, color: PLUM_LIGHT, fontWeight: 600, marginBottom: 8 }}>
-                {nextExerciseBuffer !== null ? `Next exercise in ${nextExerciseBuffer}...` : "Rest a moment..."}
+                {nextExerciseBuffer !== null ? `Starting in ${nextExerciseBuffer}...` : "Take a breath..."}
               </div>
-              <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 10 }}>Stay where you are — KORE will start the next one for you.</div>
+              <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 10 }}>Stay where you are — KORE will guide you in.</div>
               <button onClick={onNext} style={{ padding: "8px 18px", background: "rgba(255,255,255,0.1)", color: WHITE, border: "none", borderRadius: 50, fontSize: 13, cursor: "pointer" }}>Skip rest →</button>
             </div>
           ) : (
@@ -2197,6 +2241,8 @@ function InstructionPanel({ exercise }) {
 }
 function PracticeTab({ userData }) {
   const [view, setView]         = useState("library");
+  const [libTab, setLibTab]     = useState("exercises"); // exercises | live
+  const [queue, setQueue]       = useState([]); // user-selected custom session
   const [activeLevel, setLevel] = useState(userData?.recommendedLevel || "beginner");
   const [selected, setSelected] = useState(null);
   const [sessionList, setSessionList] = useState([]);
@@ -2204,12 +2250,18 @@ function PracticeTab({ userData }) {
   const userName = userData?.name || "love";
 
   const levelData = EXERCISE_LEVELS_8[activeLevel];
+  const inQueue = (id) => queue.some(q => q.id === id);
+  const toggleQueue = (ex) => setQueue(inQueue(ex.id) ? queue.filter(q => q.id !== ex.id) : [...queue, ex]);
 
   function startSession(lvl) {
     const list = EXERCISE_LEVELS_8[lvl].exercises;
     setSessionList(list); setSessionIdx(0); setSelected(list[0]); setView("session");
   }
   function startSingle(ex) { setSessionList([ex]); setSessionIdx(0); setSelected(ex); setView("session"); }
+  function startQueue() {
+    if (queue.length === 0) return;
+    setSessionList(queue); setSessionIdx(0); setSelected(queue[0]); setView("session");
+  }
 
   if (view === "detail" && selected) return (
     <div style={{ background: CREAM, minHeight: "100vh", paddingBottom: 80 }}>
@@ -2257,13 +2309,37 @@ function PracticeTab({ userData }) {
   const recMinutes = Math.max(1, Math.round(recommended.reduce((s, e) => s + e.duration, 0) / 60));
   const todayLabel = new Date().toLocaleDateString(undefined, { weekday: "long" });
   return (
-    <div style={{ background: CREAM, paddingBottom: 80 }}>
+    <div style={{ background: CREAM, paddingBottom: queue.length > 0 ? 150 : 80 }}>
       <div style={{ padding: "24px 20px 0" }}>
-        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Exercise library</div>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 6 }}>Your healing programme</h1>
-        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 20 }}>8 clinically approved exercises, guided by real-time AI posture tracking.</p>
+        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Practice</div>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 16 }}>Your healing programme</h1>
+
+        {/* Top selector: Exercises | Live Classes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: SAGE, borderRadius: 50, padding: 3, marginBottom: 20 }}>
+          {[["exercises", "Exercises"], ["live", "Live Classes"]].map(([id, label]) => (
+            <button key={id} onClick={() => setLibTab(id)} style={{ padding: "10px", borderRadius: 50, border: "none", cursor: "pointer", background: libTab === id ? WHITE : "transparent", color: libTab === id ? TEXT_DARK : TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: libTab === id ? 500 : 400, boxShadow: libTab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+          ))}
+        </div>
       </div>
 
+      {libTab === "live" ? (
+        <div style={{ padding: "0 20px" }}>
+          <div style={{ background: `linear-gradient(135deg, ${SAGE_DARK} 0%, #4F6B4F 100%)`, borderRadius: 18, padding: "26px 22px", color: WHITE, marginBottom: 16, textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, marginBottom: 8 }}>Live Classes</h2>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, marginBottom: 18 }}>Heal alongside other mothers. Schedule a guided live session with members in your circle — gentle, encouraging, and never alone.</p>
+            <button onClick={() => alert("Live class scheduling is coming soon 💜")} style={{ width: "100%", padding: "14px", borderRadius: 50, background: WHITE, border: "none", color: "#4F6B4F", fontFamily: "'Playfair Display', serif", fontSize: 16, cursor: "pointer" }}>
+              Schedule a class
+            </button>
+          </div>
+          <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.6 }}>No classes scheduled yet. Be the first to start one with your Mama Circle.</div>
+          </div>
+        </div>
+      ) : (
+      <div>
       {/* Today's recommended practice */}
       <div style={{ padding: "0 20px", marginBottom: 20 }}>
         <div style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 18, padding: "22px 22px", position: "relative", overflow: "hidden" }}>
@@ -2287,6 +2363,13 @@ function PracticeTab({ userData }) {
             <svg width="15" height="15" viewBox="0 0 24 24" fill={PLUM_DARK}><polygon points="5,3 19,12 5,21"/></svg>
             Begin Today's Practice
           </button>
+        </div>
+      </div>
+
+      {/* Build-your-own hint */}
+      <div style={{ padding: "0 20px", marginBottom: 14 }}>
+        <div style={{ background: PLUM_PALE, borderRadius: 12, padding: "12px 16px", fontSize: 13, color: PLUM_DARK, lineHeight: 1.5 }}>
+          💜 Want to choose your own? Tap the <strong>+</strong> on any exercise below to queue your favourites, then start your custom session.
         </div>
       </div>
 
@@ -2316,21 +2399,45 @@ function PracticeTab({ userData }) {
         </button>
       </div>
 
-      {/* Exercise list */}
+      {/* Exercise list — with queue toggle */}
       <div style={{ padding: "0 20px" }}>
-        {levelData.exercises.map(ex => (
-          <div key={ex.id} onClick={() => { setSelected(ex); setView("detail"); }} style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: "14px 16px", marginBottom: 10, cursor: "pointer", display: "flex", gap: 14, alignItems: "center" }}>
-            <div style={{ width: 50, height: 50, borderRadius: 12, background: levelData.bgColor, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {levelData.exercises.map(ex => { const q = inQueue(ex.id); return (
+          <div key={ex.id} style={{ background: WHITE, borderRadius: 16, border: `1px solid ${q ? PLUM : BORDER}`, padding: "14px 16px", marginBottom: 10, display: "flex", gap: 12, alignItems: "center" }}>
+            <div onClick={() => { setSelected(ex); setView("detail"); }} style={{ width: 50, height: 50, borderRadius: 12, background: levelData.bgColor, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 600, fontSize: 17, color: levelData.color }}>{ex.order || levelData.exercises.indexOf(ex) + 1}</span>
             </div>
-            <div style={{ flex: 1 }}>
+            <div onClick={() => { setSelected(ex); setView("detail"); }} style={{ flex: 1, cursor: "pointer" }}>
               <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 15, color: TEXT_DARK, marginBottom: 3 }}>{ex.name}</div>
               <div style={{ fontSize: 12, color: TEXT_LIGHT }}>{ex.reps} · {ex.duration}s</div>
             </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT_LIGHT} strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            <button onClick={() => toggleQueue(ex)} title={q ? "Remove from my session" : "Add to my session"} style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${q ? PLUM : BORDER}`, background: q ? PLUM : WHITE, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {q
+                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PLUM} strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              }
+            </button>
           </div>
-        ))}
+        ); })}
       </div>
+      </div>
+      )}
+
+      {/* Sticky "Start my session" bar when exercises are queued */}
+      {queue.length > 0 && libTab === "exercises" && (
+        <div style={{ position: "fixed", bottom: 76, left: 0, right: 0, padding: "0 16px", zIndex: 30 }}>
+          <div style={{ background: PLUM_DARK, borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 24px rgba(74,31,54,0.35)" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: PLUM_LIGHT }}>My session</div>
+              <div style={{ fontSize: 14, color: WHITE, fontWeight: 600 }}>{queue.length} exercise{queue.length > 1 ? "s" : ""} queued</div>
+            </div>
+            <button onClick={() => setQueue([])} style={{ background: "rgba(255,255,255,0.12)", border: "none", color: WHITE, fontSize: 12, padding: "8px 12px", borderRadius: 50, cursor: "pointer" }}>Clear</button>
+            <button onClick={startQueue} style={{ background: WHITE, border: "none", color: PLUM_DARK, fontSize: 14, fontWeight: 600, padding: "10px 18px", borderRadius: 50, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill={PLUM_DARK}><polygon points="5,3 19,12 5,21"/></svg>
+              Start
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
