@@ -1502,15 +1502,21 @@ function usePracticeSession(exercise, userName = "love") {
     } catch (e) {}
   }, [voiceSynth]);
 
-  // Browser voice fallback (only used if ElevenLabs fails)
-  const speakBrowser = useCallback((text) => {
-    if (!voiceSynth) return;
-    voiceSynth.cancel();
+  // Browser voice fallback (only used if ElevenLabs/Tolani fails). Chains via
+  // onend so lines never cut each other off, and picks the most natural voice.
+  const speakBrowser = useCallback((text, onDone) => {
+    if (!voiceSynth) { onDone && onDone(); return; }
+    try { voiceSynth.cancel(); } catch (e) {}
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.88; u.pitch = 1.05; u.volume = 1.0;
-    const voices = voiceSynth.getVoices();
-    const v = voices.find(v => v.lang.startsWith("en-GB") || v.name.includes("Samantha") || v.name.includes("Karen")) || voices[0];
+    u.rate = 0.95; u.pitch = 1.12; u.volume = 1.0;
+    const voices = voiceSynth.getVoices() || [];
+    const prefer = ["Samantha", "Karen", "Serena", "Moira", "Tessa", "Fiona", "Google UK English Female", "Microsoft Aria", "Microsoft Libby", "Microsoft Sonia"];
+    let v = null;
+    for (const name of prefer) { v = voices.find(x => x.name && x.name.includes(name)); if (v) break; }
+    if (!v) v = voices.find(x => /female/i.test(x.name || "")) || voices.find(x => x.lang && x.lang.startsWith("en")) || voices[0];
     if (v) u.voice = v;
+    u.onend = () => { onDone && onDone(); };
+    u.onerror = () => { onDone && onDone(); };
     voiceSynth.speak(u);
   }, [voiceSynth]);
 
@@ -1520,8 +1526,6 @@ function usePracticeSession(exercise, userName = "love") {
     voiceIsSpeakingRef.current = true;
     const text = voiceQueueRef.current.shift();
     try {
-      // Stop any browser TTS so it never overlaps Tolani's real voice
-      voiceSynth?.cancel();
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1529,6 +1533,7 @@ function usePracticeSession(exercise, userName = "love") {
       });
       if (!res.ok) throw new Error("Voice API non-200");
       const blob = await res.blob();
+      if (!blob || blob.size < 256) throw new Error("Empty/invalid audio"); // error JSON, not audio
       const url = URL.createObjectURL(blob);
       if (!audioRef.current) audioRef.current = new Audio();
       audioRef.current.volume = 1.0;
@@ -1537,24 +1542,27 @@ function usePracticeSession(exercise, userName = "love") {
       audioRef.current.onerror = () => { URL.revokeObjectURL(url); playNextInQueue(); };
       await audioRef.current.play();
     } catch (err) {
-      // Fallback to browser TTS
-      speakBrowser(text);
-      // Wait roughly enough for the browser voice, then proceed
-      setTimeout(() => playNextInQueue(), Math.min(8000, text.length * 75));
+      // Graceful fallback — chains via onend so it never cuts itself off
+      speakBrowser(text, () => playNextInQueue());
     }
   }, [speakBrowser]);
 
   const speak = useCallback((text, priority = "normal") => {
     if (!text) return;
     if (priority === "high") {
-      // Interrupt: stop current audio, clear queue, speak immediately
+      // Hard interrupt — only used on exit cleanup. Stops current immediately.
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+      voiceSynth?.cancel();
       voiceQueueRef.current = [text];
       voiceIsSpeakingRef.current = false;
-      voiceSynth?.cancel();
       playNextInQueue();
+    } else if (priority === "soft") {
+      // Drop any pending lines but let the CURRENT line finish, then play this.
+      // This is how we transition between phases without ever cutting Tolani off.
+      voiceQueueRef.current = [text];
+      if (!voiceIsSpeakingRef.current) playNextInQueue();
     } else {
-      // Safety: never let the queue run away (keeps Tolani in sync, not laggy)
+      // Normal — queue behind whatever is playing (capped so it can't lag).
       if (voiceQueueRef.current.length >= 2) return;
       voiceQueueRef.current.push(text);
       if (!voiceIsSpeakingRef.current) playNextInQueue();
@@ -1566,7 +1574,7 @@ function usePracticeSession(exercise, userName = "love") {
     if (phase === "countdown" && countdown === 1) {
       // Intro script plays as countdown ends
       if (exercise.tolaniIntro) {
-        speak(exercise.tolaniIntro, "high");
+        speak(exercise.tolaniIntro, "soft");
       }
     }
   }, [phase, countdown, exercise.tolaniIntro]);
@@ -1850,7 +1858,6 @@ function usePracticeSession(exercise, userName = "love") {
   // ── COUNTDOWN ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (countdown === 3) speak(`Getting ready, ${userName && userName !== "love" ? userName : "mama"}.`, "high");
     if (countdown <= 0) { setPhase("active"); return; }
     const t = setTimeout(() => setCount(c => c - 1), 1000);
     return () => clearTimeout(t);
@@ -1888,7 +1895,7 @@ function usePracticeSession(exercise, userName = "love") {
           repCount++;
           setReps(r => Math.min(repTarget, r + 1));
           if (repCount >= repTarget) {
-            speak(`And ${repCount}... that's your last one, ${nm}. Beautiful work.`, "high");
+            speak(`And ${repCount}... that's your last one, ${nm}. Beautiful work.`);
           } else {
             const phrases = [
               `Exhale and move... that's ${repCount}. Beautiful.`,
@@ -1913,7 +1920,6 @@ function usePracticeSession(exercise, userName = "love") {
           cleanupCue();
           if (intervalRef.current) clearInterval(intervalRef.current);
           setPhase("rest");
-          speak(`Wonderful, ${nm}. That's one complete. Take a gentle breath.`, "high");
           return e + 1;
         }
         return e + 1;
@@ -1958,19 +1964,17 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     const isLast = currentIdx >= sessionList.length - 1;
 
     if (isLast) {
-      const t = setTimeout(() => {
-        setPhase("complete");
-        speak("That is your session complete, mama. I am so proud of you for showing up today.", "high");
-      }, 3500);
+      speak(`That's your whole session complete, ${userName && userName !== "love" ? userName : "mama"}. I am so proud of you for showing up today.`, "soft");
+      const t = setTimeout(() => { setPhase("complete"); }, 4500);
       return () => clearTimeout(t);
     }
 
     if (workoutMode === "automatic") {
       const nextName = sessionList[currentIdx + 1]?.name || "the next exercise";
-      // Gentle hand-off: name the next exercise, pause ~3s, then it begins
+      // Gentle hand-off: name the next exercise, pause, then it begins
       // (the soft how-to intro then plays during that exercise's countdown).
-      speak(`Lovely. Take a breath, ${userName && userName !== "love" ? userName : "mama"}. Coming up next is ${nextName}.`, "high");
-      let c = 3;
+      speak(`Beautiful work, ${userName && userName !== "love" ? userName : "mama"}. Take a breath. Coming up next is ${nextName}.`, "soft");
+      let c = 5;
       setNextBuffer(c);
       const timer = setInterval(() => {
         c--;
