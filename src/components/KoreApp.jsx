@@ -2626,20 +2626,20 @@ function ResourcesTab({ onHowItWorks }) {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────
-// MYTH-BUSTER BOT — Demo-Ready with 10 Hardcoded Postpartum Myths
-// ─────────────────────────────────────────────────────────────────────────
-const MYTH_BUSTER_KNOWLEDGE_BASE = {
-  "planks": { myth: "Traditional planks will permanently ruin your stomach muscles", truth: "Standard planks place too much intra-abdominal pressure early on, BUT modified planks are safe and effective when introduced progressively (Week 8+). Start with wall planks.", source: "Pelvic Health Physical Therapy Association" },
-  "herbal wrap": { myth: "Special herbal wraps can close the gap completely", truth: "Herbal wraps do NOT close muscle gaps. They soothe skin and provide gentle compression, but gaps close through targeted exercise only.", source: "Evidence-Based Postpartum Recovery" },
-  "exercise timing": { myth: "You must wait 6 weeks before any movement", truth: "Gentle movement (walking, breathing) can begin immediately. Deep core work starts Week 6-8. Always consult your midwife/doctor first.", source: "Royal College of Obstetricians & Gynaecologists" },
-  "binding": { myth: "Binding your stomach prevents permanent damage", truth: "Gentle compression provides emotional comfort, but won't close gaps or prevent pelvic floor issues. Avoid tight binding.", source: "Traditional + Modern Postpartum Care" },
-  "permanent": { myth: "If your gap doesn't close in 6 weeks, it's permanent", truth: "Gaps can close up to 12 months postpartum with consistent exercise. 70% of mothers see significant improvement.", source: "Journal of Women's Physical Therapy" },
-  "leaking": { myth: "Leaking during workouts means you're doing too much", truth: "Some leaking is common early on—it means your pelvic floor is fatigued, NOT damaged. Reduce intensity and try again tomorrow.", source: "Pelvic Floor Dysfunction Specialists" },
-  "jumping": { myth: "Jumping is forbidden for the first year", truth: "Jumping is high-impact. Wait until Week 16+, and ONLY after you can do 10 wall push-ups without leaking. Build progressively.", source: "American College of Sports Medicine" },
-  "breastfeeding": { myth: "Breastfeeding delays core healing", truth: "Breastfeeding does NOT delay core recovery. The hormones (oxytocin) actually support healing. Focus on nutrition.", source: "La Leche League International" },
-  "heavy lifting": { myth: "You can never lift heavy again", truth: "You CAN lift heavy—but timing matters. Weeks 1-6: under 5kg. Weeks 6-12: under 10kg. Weeks 12+: progress gradually.", source: "Postpartum Strength Training Guidelines" },
-  "pain": { myth: "Any pain during exercise is bad", truth: "Muscle fatigue ≠ pain. Sharp, shooting, or deep pain = STOP and consult a physiotherapist. Gentle muscle soreness is normal.", source: "Pain Management in Postpartum Recovery" }
+// ════════════════════════════════════════════════════════════════════════════════
+// MYTH-BUSTER BOT — AI-Ready Cultural Myth Debunker for Demo
+// ════════════════════════════════════════════════════════════════════════════════
+const MYTH_BUSTER_DB = {
+  "planks": "Standard planks place too much intra-abdominal pressure early on, BUT modified planks (wall planks, incline) are safe when introduced at Week 8+.",
+  "herbal wrap": "Herbal wraps do NOT close gaps. They soothe skin & provide comfort, but gaps close only through targeted exercise.",
+  "exercise timing": "Gentle movement (walking, breathing) begins immediately. Deep core work starts Week 6-8. Always consult your midwife/doctor first.",
+  "binding": "Gentle compression provides emotional comfort, but won't close gaps or prevent pelvic floor issues. Avoid tight binding.",
+  "permanent": "Gaps can close up to 12 months postpartum with consistent exercise. 70% of mothers see significant improvement by Week 12.",
+  "leaking": "Some leaking is common early on—it means your pelvic floor is fatigued, NOT damaged. Reduce intensity and try again tomorrow.",
+  "jumping": "Jumping is high-impact. Wait until Week 16+, and ONLY after you can do 10 wall push-ups without leaking.",
+  "breastfeeding": "Breastfeeding does NOT delay core recovery. Oxytocin hormones actually support healing. Focus on nutrition & hydration.",
+  "heavy lifting": "You CAN lift heavy—but timing matters. Weeks 1-6: under 5kg. Weeks 6-12: under 10kg. Weeks 12+: progress gradually.",
+  "pain": "Muscle fatigue ≠ pain. Sharp, shooting, or deep pain = STOP and consult a physiotherapist. Gentle muscle soreness is normal."
 };
 
 function MythBusterBot() {
@@ -2648,45 +2648,126 @@ function MythBusterBot() {
   const [isOpen, setIsOpen] = useState(false);
 
   const findAnswer = (userQ) => {
-    const lowerQ = userQ.toLowerCase();
-    for (const [key, value] of Object.entries(MYTH_BUSTER_KNOWLEDGE_BASE)) {
-      if (lowerQ.includes(key)) {
+    const lower = userQ.toLowerCase();
+    for (const [key, value] of Object.entries(MYTH_BUSTER_DB)) {
+      if (lower.includes(key)) {
         setAnswer(value);
         return;
       }
     }
-    setAnswer({
-      myth: "Question unclear",
-      truth: "Try asking about planks, herbal wraps, binding, jumping, heavy lifting, leaking, exercise timing, breastfeeding, or pain. KORE knows 10+ myths!",
-      source: "Ask more specifically"
-    });
+    setAnswer("Try asking: planks, herbal wrap, exercise timing, binding, permanent, leaking, jumping, breastfeeding, heavy lifting, or pain.");
   };
 
   const handleAsk = () => {
     if (question.trim()) findAnswer(question);
   };
 
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          zIndex: 999,
+          width: 60,
+          height: 60,
+          borderRadius: "50%",
+          background: PLUM,
+          border: "none",
+          color: WHITE,
+          fontSize: 28,
+          cursor: "pointer",
+          boxShadow: "0 4px 12px rgba(107, 45, 78, 0.3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+        title="Ask Myth-Buster Bot"
+      >
+        💬
+      </button>
+    );
+  }
+
   return (
-    <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 999 }}>
-      {!isOpen ? (
-        <button onClick={() => setIsOpen(true)} style={{ width: 60, height: 60, borderRadius: "50%", background: PLUM, border: "none", color: WHITE, fontSize: 28, cursor: "pointer", boxShadow: "0 4px 12px rgba(107, 45, 78, 0.3)" }} title="Ask Myth-Buster Bot">💬</button>
-      ) : (
-        <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: 20, maxWidth: 320, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, color: TEXT_DARK, margin: 0 }}>🤖 Myth-Buster</h3>
-            <button onClick={() => { setIsOpen(false); setAnswer(null); setQuestion(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: TEXT_LIGHT }}>✕</button>
-          </div>
-          <textarea placeholder="Ask about planks, binding, jumping, leaking, or pain..." value={question} onChange={(e) => setQuestion(e.target.value)} style={{ width: "100%", height: 60, padding: 10, borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 13, fontFamily: "'DM Sans', sans-serif", resize: "none", marginBottom: 10 }} />
-          <button onClick={handleAsk} style={{ width: "100%", padding: 10, background: PLUM, color: WHITE, border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: answer ? 12 : 0 }}>Ask →</button>
-          {answer && (<div style={{ background: PLUM_PALE, borderRadius: 8, padding: 12, marginTop: 12, borderLeft: `3px solid ${PLUM}` }}><div style={{ fontSize: 11, color: PLUM, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>✓ Myth Debunked</div><div style={{ fontSize: 13, color: TEXT_DARK, fontWeight: 600, marginBottom: 8 }}>{answer.myth}</div><div style={{ fontSize: 12, color: TEXT_MID, lineHeight: 1.6, marginBottom: 8, fontStyle: "italic" }}>{answer.truth}</div><div style={{ fontSize: 10, color: PLUM, fontWeight: 500, borderTop: `1px solid ${PLUM_LIGHT}`, paddingTop: 8 }}>📚 {answer.source}</div></div>)}
+    <div style={{
+      position: "fixed",
+      bottom: 20,
+      right: 20,
+      zIndex: 999,
+      background: WHITE,
+      borderRadius: 14,
+      border: `1px solid ${BORDER}`,
+      padding: 20,
+      maxWidth: 320,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+      animation: "slideUp 0.3s"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, color: TEXT_DARK, margin: 0 }}>
+          🤖 Myth-Buster
+        </h3>
+        <button
+          onClick={() => { setIsOpen(false); setAnswer(null); setQuestion(""); }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: TEXT_LIGHT }}
+        >
+          ✕
+        </button>
+      </div>
+      <textarea
+        placeholder="Ask about planks, leaking, jumping..."
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        style={{
+          width: "100%",
+          height: 50,
+          padding: 10,
+          borderRadius: 8,
+          border: `1px solid ${BORDER}`,
+          fontSize: 12,
+          fontFamily: "'DM Sans', sans-serif",
+          resize: "none",
+          marginBottom: 10
+        }}
+      />
+      <button
+        onClick={handleAsk}
+        style={{
+          width: "100%",
+          padding: 10,
+          background: PLUM,
+          color: WHITE,
+          border: "none",
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          marginBottom: answer ? 10 : 0
+        }}
+      >
+        Ask →
+      </button>
+      {answer && (
+        <div style={{
+          background: PLUM_PALE,
+          borderRadius: 8,
+          padding: 10,
+          marginTop: 10,
+          borderLeft: `3px solid ${PLUM}`,
+          fontSize: 12,
+          color: TEXT_DARK,
+          lineHeight: 1.5
+        }}>
+          <strong>✓ Myth-Buster says:</strong><br/>{answer}
         </div>
       )}
     </div>
   );
 }
 
-
-$1
+export default function App() {
   const [screen, setScreen] = useState("landing");
   const [onboardStep, setOnboardStep] = useState(1);
   const [userData, setUserData] = usePersistedState("kore_user_data", {});
@@ -2733,7 +2814,8 @@ $1
     <OnboardingSurveyModal isOpen={showSurvey && screen === "app"} onComplete={handleSurveyComplete} />
     <AppShell activeTab={activeTab} setActiveTab={setActiveTab}>
       {tabMap[activeTab]}
-    <MythBusterBot />
-    </AppShell></>
+      <MythBusterBot />
+    </AppShell>
+    </>
   );
 }
