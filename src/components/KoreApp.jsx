@@ -1554,6 +1554,8 @@ function usePracticeSession(exercise, userName = "love") {
       voiceSynth?.cancel();
       playNextInQueue();
     } else {
+      // Safety: never let the queue run away (keeps Tolani in sync, not laggy)
+      if (voiceQueueRef.current.length >= 2) return;
       voiceQueueRef.current.push(text);
       if (!voiceIsSpeakingRef.current) playNextInQueue();
     }
@@ -1583,12 +1585,17 @@ function usePracticeSession(exercise, userName = "love") {
   // Speak a correction respecting per-type cooldown (prevent repeating same cue)
   const speakCorrection = useCallback((type, message) => {
     const now = Date.now();
-    if (corrCooldownsRef.current[type] && now - corrCooldownsRef.current[type] < 8000) return;
-    corrCooldownsRef.current[type] = now;
+    // Always show the on-screen hint — it's cheap and never disrupts audio.
     setCorr(message);
-    speak(message);
     setPostureError(true);
-    setTimeout(() => { setCorr(null); setPostureError(false); }, 5000);
+    setTimeout(() => { setCorr(null); setPostureError(false); }, 4000);
+    // Only SPEAK a correction when Tolani is free and not too often, so
+    // corrections can never pile up behind the rep counting and make her lag.
+    if (now - (corrCooldownsRef.current._global || 0) < 14000) return;       // global throttle
+    if (voiceIsSpeakingRef.current || voiceQueueRef.current.length > 0) return; // only fill silence
+    corrCooldownsRef.current._global = now;
+    corrCooldownsRef.current[type] = now;
+    speak(message);
   }, [speak]);
 
   // ── PER-EXERCISE RESET ──────────────────────────────────────────────────
@@ -1699,24 +1706,26 @@ function usePracticeSession(exercise, userName = "love") {
 
           let target;
           if (isBreathing) {
-            if (motion < 1.2) { target = 58; still++; }       // too still — holding breath
-            else if (motion > 14) target = 70;                // too much movement for breathing
-            else target = 90 + Math.min(8, motion);           // gentle steady breathing — ideal
+            // Gentle breathing = small motion is EXPECTED and good. Keep it
+            // encouraging; only a long, total freeze nudges it down.
+            if (motion < 0.5) { target = 74; still++; }       // very still — gentle breath reminder
+            else target = 90 + Math.min(8, motion);           // breathing nicely
           } else {
-            if (motion < 1.2) { target = 52; still++; }       // not moving — stalled
-            else if (motion > 26) target = 62;                // jerky / rushing
-            else { target = 82 + Math.min(15, motion * 1.2); still = 0; } // controlled active range
+            if (motion < 0.8) { still++; target = still > 4 ? 58 : 80; } // only sustained stillness drops it
+            else if (motion > 30) target = 66;                // very jerky / rushing
+            else { target = 84 + Math.min(13, motion * 1.1); still = 0; } // controlled active range
           }
-          smooth = Math.round(smooth * 0.65 + target * 0.35);
-          smooth = Math.max(42, Math.min(99, smooth));
+          smooth = Math.round(smooth * 0.7 + target * 0.3);
+          smooth = Math.max(50, Math.min(99, smooth));
           setScore(smooth);
 
-          if (smooth < 70) {
-            if (still > 5) speakCorrection("breathHolding", pick(POSTURE_CORRECTIONS.breathHolding));
-            else if (motion > 26) speakCorrection("rushing", pick(corrSet.spineArching));
+          // Corrections are gated inside speakCorrection (won't flood Tolani)
+          if (smooth < 66) {
+            if (still > 6) speakCorrection("breathHolding", pick(POSTURE_CORRECTIONS.breathHolding));
+            else if (motion > 30) speakCorrection("rushing", pick(corrSet.spineArching));
             else speakCorrection("spineArching", pick(corrSet.spineArching));
           }
-          if (motion >= 1.2 && !isBreathing) still = 0;
+          if (motion >= 0.8 && !isBreathing) still = 0;
         }
         prev = cur;
         detectedOnceRef.current = true;
@@ -1841,7 +1850,7 @@ function usePracticeSession(exercise, userName = "love") {
   // ── COUNTDOWN ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (phase !== "countdown") return;
-    if (countdown === 3) speak(`Take a moment to get into position, ${userName && userName !== "love" ? userName : "mama"}. Whenever you're ready, let's begin.`, "high");
+    if (countdown === 3) speak(`Getting ready, ${userName && userName !== "love" ? userName : "mama"}.`, "high");
     if (countdown <= 0) { setPhase("active"); return; }
     const t = setTimeout(() => setCount(c => c - 1), 1000);
     return () => clearTimeout(t);
