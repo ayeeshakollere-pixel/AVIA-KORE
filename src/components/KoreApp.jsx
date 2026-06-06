@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 const PLUM = "#6B2D4E";
 const PLUM_DARK = "#4A1F36";
