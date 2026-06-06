@@ -330,7 +330,7 @@ function Landing({ onStart, onHowItWorks }) {
 }
 
 // ─── How It Works Page ────────────────────────────────────────────────────────
-function HowItWorks({ onBack, onBegin }) {
+function HowItWorks({ onBack, onBegin, backLabel = "Back to Home" }) {
   const [faqOpen, setFaqOpen] = useState(null);
 
   const steps = [
@@ -388,7 +388,7 @@ function HowItWorks({ onBack, onBegin }) {
     },
     {
       q: "Does it swallow up my mobile data?",
-      a: "No. Once downloaded, the tracking system runs locally on your device without draining your cellular data package. You can use it with no internet connection at all.",
+      a: "The part that matters most for privacy — the AI pose tracking — runs entirely on your device, so your camera feed is never uploaded and uses no data. A light connection is only needed to load exercise videos and voice guidance, which we keep as small as possible.",
     },
     {
       q: "Is it too late for my body to heal?",
@@ -402,7 +402,7 @@ function HowItWorks({ onBack, onBegin }) {
       <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 14 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Back to Home
+          {backLabel}
         </button>
         <KoreLogo size={28} />
       </div>
@@ -466,8 +466,8 @@ function HowItWorks({ onBack, onBegin }) {
         {/* Privacy reassurance row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 40 }}>
           {[
-            { icon: "🔒", title: "100% Private", sub: "Nothing ever leaves your phone" },
-            { icon: "📵", title: "No data used", sub: "Works fully offline" },
+            { icon: "🔒", title: "100% Private", sub: "Your camera feed never leaves your phone" },
+            { icon: "🧠", title: "On-device AI", sub: "Pose tracking runs locally, not in the cloud" },
             { icon: "🕐", title: "5–10 minutes", sub: "Fits into any busy day" },
           ].map(({ icon, title, sub }) => (
             <div key={title} style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "16px 14px", textAlign: "center" }}>
@@ -615,7 +615,7 @@ function Step6({ onNext, onBack, data, setData }) {
 }
 
 // ─── Home Tab ─────────────────────────────────────────────────────────────────
-function HomeTab({ userData }) {
+function HomeTab({ userData, setActiveTab }) {
   const name = userData?.name || "Maya";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -632,7 +632,7 @@ function HomeTab({ userData }) {
       <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{greeting}, {name}</div>
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 24 }}>You're healing beautifully.</h2>
 
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div onClick={() => setActiveTab && setActiveTab("practice")} style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, cursor: "pointer" }}>
         <div><div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 3 }}>Your plan</div><div style={{ fontSize: 16, fontWeight: 500, color: TEXT_DARK }}>Monthly Maintenance</div></div>
         <span style={{ color: TEXT_LIGHT, fontSize: 18 }}>›</span>
       </div>
@@ -659,12 +659,12 @@ function HomeTab({ userData }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-        <div style={{ background: PLUM, borderRadius: 14, padding: "18px 16px" }}>
+        <div onClick={() => setActiveTab && setActiveTab("practice")} style={{ background: PLUM, borderRadius: 14, padding: "18px 16px", cursor: "pointer" }}>
           <div style={{ marginBottom: 10 }}><svg width="22" height="22" viewBox="0 0 24 24" fill={PLUM_PALE}><polygon points="5,3 19,12 5,21"/></svg></div>
           <div style={{ fontWeight: 500, fontSize: 15, color: WHITE }}>Today's practice</div>
           <div style={{ fontSize: 12, color: PLUM_LIGHT, marginTop: 3 }}>12 min · 3 exercises</div>
         </div>
-        <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 16px" }}>
+        <div onClick={() => setActiveTab && setActiveTab("checkin")} style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 16px", cursor: "pointer" }}>
           <div style={{ marginBottom: 10 }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
           <div style={{ fontWeight: 500, fontSize: 15, color: TEXT_DARK }}>Daily check-in</div>
           <div style={{ fontSize: 12, color: TEXT_MID, marginTop: 3 }}>Log how you feel</div>
@@ -838,7 +838,7 @@ const EXERCISES_8 = [
   },
 ];
 
-const EXERCISE_LEVELS_8_8 = {
+const EXERCISE_LEVELS_8 = {
   beginner: {
     label: "Beginner",
     sublabel: "Foundation & Re-activation",
@@ -2268,16 +2268,6 @@ function CheckinTab() {
       )}
 
       <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: SAGE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.5 19.79 19.79 0 01.07 4.72C.05 3.61.82 2.68 1.93 2H4.97a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-          </div>
-          <div><div style={{ fontSize: 16, fontWeight: 500, color: TEXT_DARK, marginBottom: 3 }}>Unsure about your gap?</div><div style={{ fontSize: 14, color: TEXT_MID }}>Share your tracking log with a certified pelvic floor therapist for personalised guidance.</div></div>
-        </div>
-        <PillButton label="Ping a therapist" style={{ width: "100%", padding: "14px", borderRadius: 50 }} />
-      </div>
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
         <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Today's summary</div>
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>Small improvement — great consistency.</div>
         <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 16 }}>Keep following your program; gentle core engagement may help sustain progress.</p>
@@ -2345,7 +2335,7 @@ function CircleTab() {
     },
     {
       keywords: ["intimacy", "sex", "painful", "intercourse", "dry", "discomfort"],
-      answer: "Painful intimacy postpartum is very common and rarely talked about — but it's real, and it's treatable. Hormonal changes (especially while breastfeeding) cause dryness, and the pelvic floor may be holding tension or weakness. A certified pelvic floor physiotherapist can help. You can also tap 'Ping a therapist' on your check-in screen for a private referral. You deserve to feel whole again. 🌿"
+      answer: "Painful intimacy postpartum is very common and rarely talked about — but it's real, and it's treatable. Hormonal changes (especially while breastfeeding) cause dryness, and the pelvic floor may be holding tension or weakness. A certified pelvic floor physiotherapist can help. You can also find vetted pelvic floor physiotherapists in the Resources tab for a private referral. You deserve to feel whole again. 🌿"
     },
     {
       keywords: ["breastfeed", "breast feed", "nursing", "milk", "feed"],
@@ -2365,7 +2355,7 @@ function CircleTab() {
     },
     {
       keywords: ["pain", "hurts", "sharp", "ache"],
-      answer: "Sharp or persistent pain is your body asking you to stop and rest. Gentle discomfort during a new exercise is normal; pain is not. If you feel pain during any KORE exercise, pause, breathe, and either regress to an easier version or skip it for today. If the pain persists, please use 'Ping a therapist' for personalised guidance. 💜"
+      answer: "Sharp or persistent pain is your body asking you to stop and rest. Gentle discomfort during a new exercise is normal; pain is not. If you feel pain during any KORE exercise, pause, breathe, and either regress to an easier version or skip it for today. If the pain persists, please find a vetted physiotherapist in the Resources tab for personalised guidance. 💜"
     },
   ];
 
@@ -2375,7 +2365,7 @@ function CircleTab() {
       item.keywords.some(kw => q.includes(kw))
     );
     if (match) return match.answer;
-    return "That's a beautiful question, mama. While I can't give you a tailored answer to this specific one right now, I'd encourage you to tap 'Ping a therapist' from your check-in screen — a certified pelvic floor specialist can give you the personalised guidance you deserve. In the meantime, keep breathing, keep moving gently, and trust your body's healing. 🌿";
+    return "That's a beautiful question, mama. While I can't give you a tailored answer to this specific one right now, I'd encourage you to find a vetted physiotherapist in the Resources tab — a certified pelvic floor specialist can give you the personalised guidance you deserve. In the meantime, keep breathing, keep moving gently, and trust your body's healing. 🌿";
   };
 
   const sendBotMessage = async () => {
@@ -2487,8 +2477,8 @@ function ResourcesTab({ onHowItWorks }) {
     { title: "Deep Core Anatomy: How Your Abdominals Work with Your Pelvic Floor", author: "Rehabilitation Mechanics", read: "12 min read", tag: "ANATOMY" },
   ];
   const videos = [
-    { title: "How To Test for Diastasis Recti", author: "Dr. Brianne Grogan, PT, DPT", desc: "Clear step-by-step physical therapy instructions for checking your gap baseline at home safely.", url: "https://www.youtube.com/embed/2XAzDXZokEs" },
-    { title: "DIASTASIS RECTI - The Best 3D Animation Explanation", author: "Pregnancy and Postpartum TV", desc: "High-end 3D animation mapping how the linea alba stretches during pregnancy.", url: "https://www.youtube.com/embed/RKjRTtoHZHQ" },
+    { title: "How To Test for Diastasis Recti", author: "Dr. Brianne Grogan, PT, DPT", desc: "Clear step-by-step physical therapy instructions for checking your gap baseline at home safely.", url: "https://www.youtube.com/watch?v=2XAzDXZokEs" },
+    { title: "DIASTASIS RECTI - The Best 3D Animation Explanation", author: "Pregnancy and Postpartum TV", desc: "High-end 3D animation mapping how the linea alba stretches during pregnancy.", url: "https://www.youtube.com/watch?v=RKjRTtoHZHQ" },
   ];
   const physios = [
     { name: "Dr. Sofia Martin", spec: "Pelvic health", dist: "2.3 km", initials: "S" },
@@ -2497,7 +2487,7 @@ function ResourcesTab({ onHowItWorks }) {
   ];
   const faqs = [
     { q: "Will this app record me or show my body to anyone?", a: "Never. KORE works entirely inside your phone's hardware. It does not record video, save files, or upload anything to the internet. Nobody will ever see you — not even us." },
-    { q: "Does it swallow up my mobile data?", a: "No. Once downloaded, the tracking system runs locally on your device without draining your cellular data package. You can use it with no internet connection at all." },
+    { q: "Does it swallow up my mobile data?", a: "The part that matters most for privacy — the AI pose tracking — runs entirely on your device, so your camera feed is never uploaded and uses no data. A light connection is only needed to load exercise videos and voice guidance, which we keep as small as possible." },
     { q: "Is it too late for my body to heal?", a: "It is never too late. Whether you gave birth 3 months ago or 3 years ago, these targeted movements are medically structured to rebuild your core strength safely, at any stage." },
   ];
 
@@ -2573,23 +2563,18 @@ function ResourcesTab({ onHowItWorks }) {
       {/* Video Embeds */}
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 12, marginTop: 20 }}>Video guides from experts</div>
       {videos.map((v, i) => (
-        <div key={i} style={{ marginBottom: 16, background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: "hidden" }}>
-          <div style={{ width: "100%", paddingBottom: "56.25%", position: "relative", background: "#000", height: 0 }}>
-            <iframe
-              title={v.title}
-              src={v.url}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
-            />
+        <a key={i} href={v.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
+          <div style={{ marginBottom: 10, background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "14px 18px", display: "flex", gap: 14, alignItems: "center", cursor: "pointer" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#FF0000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill={WHITE}><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: TEXT_DARK, marginBottom: 2 }}>{v.title}</div>
+              <div style={{ fontSize: 12, color: TEXT_MID }}>{v.author} · Watch on YouTube</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TEXT_LIGHT} strokeWidth="2" strokeLinecap="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
           </div>
-          <div style={{ padding: "16px 20px" }}>
-            <div style={{ fontSize: 15, fontWeight: 500, color: TEXT_DARK, marginBottom: 2 }}>{v.title}</div>
-            <div style={{ fontSize: 12, color: TEXT_MID, marginBottom: 8 }}>{v.author}</div>
-            <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.4 }}>{v.desc}</div>
-          </div>
-        </div>
+        </a>
       ))}
 
       {/* Physios */}
@@ -2774,10 +2759,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [showSurvey, setShowSurvey] = useState(!hasSurveyBeenCompleted()); // Hide if already completed
 
+  const [howItWorksFrom, setHowItWorksFrom] = useState("landing");
+
   const goNext = () => { if (onboardStep < 6) setOnboardStep(onboardStep + 1); else setScreen("app"); };
   const goBack = () => { if (onboardStep > 1) setOnboardStep(onboardStep - 1); else setScreen("landing"); };
   const startOnboard = () => { setOnboardStep(1); setScreen("onboard"); };
-  const goHowItWorks = () => setScreen("howitworks");
+  const goHowItWorksFromLanding = () => { setHowItWorksFrom("landing"); setScreen("howitworks"); };
+  const goHowItWorksFromApp = () => { setHowItWorksFrom("app"); setScreen("howitworks"); };
+  const exitHowItWorks = () => { if (howItWorksFrom === "app") { setScreen("app"); setActiveTab("resources"); } else { setScreen("landing"); } };
 
   const handleSurveyComplete = (surveyAnswers) => {
     setUserData({ ...userData, surveyAnswers });
@@ -2786,11 +2775,11 @@ export default function App() {
   };
 
   if (screen === "landing") return (
-    <><style>{fonts}{globalStyle}</style><Landing onStart={startOnboard} onHowItWorks={goHowItWorks} /></>
+    <><style>{fonts}{globalStyle}</style><Landing onStart={startOnboard} onHowItWorks={goHowItWorksFromLanding} /></>
   );
 
   if (screen === "howitworks") return (
-    <><style>{fonts}{globalStyle}</style><HowItWorks onBack={() => setScreen("landing")} onBegin={startOnboard} /></>
+    <><style>{fonts}{globalStyle}</style><HowItWorks onBack={exitHowItWorks} onBegin={startOnboard} backLabel={howItWorksFrom === "app" ? "Back to Resources" : "Back to Home"} /></>
   );
 
   if (screen === "onboard") {
@@ -2802,11 +2791,11 @@ export default function App() {
   }
 
   const tabMap = {
-    home: <HomeTab userData={userData} />,
+    home: <HomeTab userData={userData} setActiveTab={setActiveTab} />,
     practice: <PracticeTab userData={userData} />,
     checkin: <CheckinTab />,
     circle: <CircleTab />,
-    resources: <ResourcesTab onHowItWorks={goHowItWorks} />,
+    resources: <ResourcesTab onHowItWorks={goHowItWorksFromApp} />,
   };
 
   return (
