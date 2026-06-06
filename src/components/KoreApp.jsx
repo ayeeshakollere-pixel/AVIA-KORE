@@ -251,7 +251,7 @@ function OnboardingShell({ step, total, children }) {
   );
 }
 
-function AppShell({ activeTab, setActiveTab, children }) {
+function AppShell({ activeTab, setActiveTab, children, onProfile }) {
   const tabs = [
     { id: "home", label: "Home", Icon: IconHome },
     { id: "practice", label: "Practice", Icon: IconPractice },
@@ -262,8 +262,13 @@ function AppShell({ activeTab, setActiveTab, children }) {
   return (
     <div style={{ minHeight: "100vh", background: CREAM, display: "flex", flexDirection: "column" }}>
       <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 }}>
-        <KoreLogo />
-        <span style={{ fontSize: 11, letterSpacing: 2, color: TEXT_LIGHT, textTransform: "uppercase" }}>Postpartum sanctuary</span>
+        <div onClick={() => onProfile && onProfile()} style={{ cursor: "pointer" }} title="View your profile"><KoreLogo /></div>
+        <button onClick={() => onProfile && onProfile()} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }} title="View your profile">
+          <span style={{ fontSize: 11, letterSpacing: 2, color: TEXT_LIGHT, textTransform: "uppercase" }}>Profile</span>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: PLUM_PALE, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={PLUM} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+        </button>
       </div>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 80 }}>{children}</div>
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: WHITE, borderTop: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-around", padding: "10px 0 14px", zIndex: 20 }}>
@@ -518,7 +523,7 @@ function HowItWorks({ onBack, onBegin, backLabel = "Back to Home" }) {
 // ─── Onboarding Steps ─────────────────────────────────────────────────────────
 function Step1({ onNext, onBack, data, setData }) {
   return (
-    <OnboardingShell step={1} total={6}>
+    <OnboardingShell step={1} total={2}>
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: TEXT_DARK, marginBottom: 8 }}>What shall we call you?</h2>
       <p style={{ color: TEXT_MID, fontSize: 15, marginBottom: 28 }}>A name we whisper to you, never shared with anyone.</p>
       <input value={data.name || ""} onChange={e => setData({ ...data, name: e.target.value })} placeholder="Your name" style={{ width: "100%", padding: "16px 20px", borderRadius: 50, border: `1.5px solid ${BORDER}`, background: WHITE, fontSize: 16, color: TEXT_DARK, outline: "none", fontFamily: "'DM Sans', sans-serif", marginBottom: 40 }} />
@@ -533,13 +538,13 @@ function Step1({ onNext, onBack, data, setData }) {
 function Step2({ onNext, onBack, data, setData }) {
   const opts = [["1 – 6 months", "Early healing"], ["7 – 12 months", "Rebuilding"], ["1 – 2 years", "Restoring strength"], ["3 years & beyond", "Long-term recovery"]];
   return (
-    <OnboardingShell step={2} total={6}>
+    <OnboardingShell step={2} total={2}>
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: TEXT_DARK, marginBottom: 8 }}>How long since baby arrived?</h2>
-      <p style={{ color: TEXT_MID, fontSize: 15, marginBottom: 28 }}>Every stage of postpartum is sacred. We meet you exactly where you are.</p>
+      <p style={{ color: TEXT_MID, fontSize: 15, marginBottom: 28 }}>Every stage of postpartum is sacred. We meet you exactly where you are. You can personalize the rest of your plan anytime from Check-in.</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 40 }}>{opts.map(([l, s]) => <ChoiceRow key={l} label={l} sublabel={s} selected={data.postpartumStage === l} onClick={() => setData({ ...data, postpartumStage: l })} />)}</div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ color: TEXT_LIGHT, fontSize: 14, cursor: "pointer" }} onClick={onBack}>‹ Back</span>
-        <PillButton label="Continue ›" onClick={onNext} variant={data.postpartumStage ? "primary" : "dimmed"} />
+        <PillButton label="Enter KORE ›" onClick={onNext} variant={data.postpartumStage ? "primary" : "dimmed"} />
       </div>
     </OnboardingShell>
   );
@@ -1408,6 +1413,7 @@ function usePracticeSession(exercise, userName = "love") {
   const [phase, setPhase]               = useState("ready");
   const [countdown, setCount]           = useState(3);
   const [elapsed, setElapsed]           = useState(0);
+  const [reps, setReps]                 = useState(0);
   const [formScore, setScore]           = useState(100);
   const [breathPhase, setBP]            = useState("inhale");
   const [correction, setCorr]           = useState(null);
@@ -1422,6 +1428,7 @@ function usePracticeSession(exercise, userName = "love") {
   const torsoHistoryRef                 = useRef([]);
   const corrCooldownsRef                = useRef({});
   const breathHoldRef                   = useRef(0);
+  const detectedOnceRef                 = useRef(false);
 
   // ── VOICE ENGINE — ElevenLabs Tolani.kore with browser fallback ──────────
   // Talks to /api/voice (Vercel serverless function) which proxies ElevenLabs
@@ -1458,7 +1465,7 @@ function usePracticeSession(exercise, userName = "love") {
     try {
       if (voiceSynth) {
         const u = new SpeechSynthesisUtterance(" ");
-        u.volume = 1.0;
+        u.volume = 0; // silent priming — must not be audible
         voiceSynth.speak(u);
       }
     } catch (e) {}
@@ -1482,6 +1489,8 @@ function usePracticeSession(exercise, userName = "love") {
     voiceIsSpeakingRef.current = true;
     const text = voiceQueueRef.current.shift();
     try {
+      // Stop any browser TTS so it never overlaps Tolani's real voice
+      voiceSynth?.cancel();
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1550,6 +1559,31 @@ function usePracticeSession(exercise, userName = "love") {
     setPostureError(true);
     setTimeout(() => { setCorr(null); setPostureError(false); }, 5000);
   }, [speak]);
+
+  // ── PER-EXERCISE RESET ──────────────────────────────────────────────────
+  // When the session advances to a new exercise, this hook instance PERSISTS
+  // (so camera + audio stay alive and unlocked), but we must reset the per-
+  // exercise flow. Without this, Tolani goes mute and the timer never restarts.
+  const isFirstExerciseRef = useRef(true);
+  useEffect(() => {
+    if (isFirstExerciseRef.current) {
+      isFirstExerciseRef.current = false; // first exercise keeps the "ready" gate
+      return;
+    }
+    // Subsequent exercises auto-start straight into the countdown
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    corrCooldownsRef.current = {};
+    torsoHistoryRef.current = [];
+    breathHoldRef.current = 0;
+    detectedOnceRef.current = false;
+    setElapsed(0);
+    setReps(0);
+    setScore(100);
+    setCorr(null);
+    setPostureError(false);
+    setCount(3);
+    setPhase("countdown");
+  }, [exercise.id]);
 
   // ── 1. CAMERA INIT — must be called from a user tap (iOS Safari requirement) ─
   const enableCamera = useCallback(async () => {
@@ -1621,6 +1655,16 @@ function usePracticeSession(exercise, userName = "love") {
         poseRef.current = pose;
         setTrackStatus("tracking");
 
+        // Watchdog: if MediaPipe can't actually detect the body within 7s
+        // (common when lying on the floor, viewed from a propped phone),
+        // switch to responsive tracking so the score isn't stuck on a dash.
+        setTimeout(() => {
+          if (!cancelled && !detectedOnceRef.current) {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            startSimulatedFallback();
+          }
+        }, 7000);
+
         // ── 3. THROTTLED PROCESSING LOOP — 8 FPS (~125 ms interval) ─────────
         // This is far cheaper than processing every frame (~30 FPS) and is
         // smooth enough for posture detection while preserving battery.
@@ -1669,6 +1713,7 @@ function usePracticeSession(exercise, userName = "love") {
 
     // Tracking is healthy — we can see the body
     setFormDetected(true);
+    detectedOnceRef.current = true;
 
     // Tracking is healthy
     if (trackingStatus !== "tracking") setTrackStatus("tracking");
@@ -1763,62 +1808,80 @@ function usePracticeSession(exercise, userName = "love") {
   useEffect(() => {
     if (phase !== "active") return;
 
-    // ── CONTINUOUS BREATH COACHING — works for every exercise ───────────────
-    // Mothers forget to breathe, so Tolani keeps a steady rhythm going by name.
     const nm = userName && userName !== "love" ? userName : "mama";
-    const breathCues = [
-      `Breathe in slowly through your nose, ${nm}...`,
-      "And breathe out gently... let your belly draw in.",
-      `Keep breathing, ${nm} — in through the nose...`,
-      "Slow breath out... engage your deep core as you exhale.",
-      "Inhale, soften your belly...",
-      `Exhale fully, ${nm}. Gently hug your tummy in.`,
-      "Don't hold your breath — in...",
-      "...and out. Beautiful, steady rhythm.",
-    ];
-    let breathCueIndex = 0;
-    let breathTimer = null;
-    const fireBreathCue = () => {
-      speak(breathCues[breathCueIndex % breathCues.length]);
-      breathCueIndex++;
-    };
-    // Start ~7s in (after the intro finishes), then every 9s throughout
+    const isBreathingExercise = /breath/i.test(exercise.name);
+
+    // Parse the rep target from the exercise (e.g. "10 reps × 2 sets" -> 10)
+    const repMatch = (exercise.reps || "").match(/(\d+)/);
+    const repTarget = repMatch ? parseInt(repMatch[1]) : 8;
+    // Pace reps across the exercise duration so counting finishes on time
+    const repInterval = Math.max(3, Math.round(exercise.duration / (repTarget + 1)));
+
+    let cueTimer = null;
+    let repCount = 0;
     const startDelay = setTimeout(() => {
-      fireBreathCue();
-      breathTimer = setInterval(fireBreathCue, 9000);
-    }, 7000);
-    const cleanupBreath = () => { clearTimeout(startDelay); if (breathTimer) clearInterval(breathTimer); };
+      const fire = () => {
+        if (isBreathingExercise) {
+          // Pure breath coaching for the breathing exercise
+          const cues = [
+            `Breathe in slowly through your nose, ${nm}...`,
+            "And breathe out gently... draw your belly in.",
+            "Inhale, soften the belly...",
+            `Exhale fully, ${nm}. Hug your tummy in.`,
+          ];
+          speak(cues[repCount % cues.length]);
+          repCount++;
+        } else {
+          // Rep counting WITH breath built in, so it never collides
+          repCount++;
+          setReps(r => Math.min(repTarget, r + 1));
+          const phrases = [
+            `Exhale and move... that's ${repCount}. Beautiful.`,
+            `Breathe out... ${repCount}. Keep your core gently engaged.`,
+            `And ${repCount}... inhale as you reset, ${nm}.`,
+            `${repCount}. Lovely control. Don't hold your breath.`,
+          ];
+          speak(phrases[(repCount - 1) % phrases.length]);
+        }
+      };
+      fire();
+      cueTimer = setInterval(fire, (isBreathingExercise ? 8 : repInterval) * 1000);
+    }, 6000); // after the intro
+
+    const cleanupCue = () => { clearTimeout(startDelay); if (cueTimer) clearInterval(cueTimer); };
 
     const timer = setInterval(() => {
       setElapsed(e => {
         if (e + 1 >= exercise.duration) {
           clearInterval(timer);
-          cleanupBreath();
+          cleanupCue();
           if (intervalRef.current) clearInterval(intervalRef.current);
           setPhase("rest");
-          speak(`Wonderful, ${nm}. That's one exercise complete. Take a gentle breath.`, "high");
+          speak(`Wonderful, ${nm}. That's one complete. Take a gentle breath.`, "high");
           return e + 1;
         }
         return e + 1;
       });
     }, 1000);
-    return () => { clearInterval(timer); cleanupBreath(); };
-  }, [phase, exercise.duration, exercise.name, userName]);
+    return () => { clearInterval(timer); cleanupCue(); };
+  }, [phase, exercise.duration, exercise.name, exercise.reps, userName]);
 
   return {
-    phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase,
+    phase, setPhase, countdown, setCount, elapsed, reps, formScore, breathPhase,
     correction, postureError, camGranted, cameraRef, speak, trackingStatus, enableCamera, unlockAudio, formDetected,
   };
 }
 
 // ── Session screen ─────────────────────────────────────────────────────────
 function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, onExit, userName = "love" }) {
-  const { phase, setPhase, countdown, setCount, elapsed, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus, enableCamera, unlockAudio, formDetected } = usePracticeSession(exercise, userName);
-  const [workoutMode, setWorkoutMode] = useState("manual"); // manual | automatic
+  const { phase, setPhase, countdown, setCount, elapsed, reps, formScore, breathPhase, correction, camGranted, cameraRef, speak, trackingStatus, enableCamera, unlockAudio, formDetected } = usePracticeSession(exercise, userName);
+  const [workoutMode, setWorkoutMode] = useState("automatic"); // automatic = hands-free | manual = tap to advance
   const [videoFailed, setVideoFailed] = useState(false);
   useEffect(() => { setVideoFailed(false); }, [exercise.id]);
   const [nextExerciseBuffer, setNextBuffer] = useState(null); // countdown to next
-  const scoreColor = formScore >= 80 ? SAGE_DARK : formScore >= 60 ? "#B45309" : "#DC2626";
+  const repTarget = (() => { const m = (exercise.reps || "").match(/(\d+)/); return m ? parseInt(m[1]) : 8; })();
+  const ringColor = !camGranted || !formDetected ? BORDER : (formScore >= 70 ? "#22C55E" : "#EF4444");
+  const scoreColor = !camGranted || !formDetected ? TEXT_LIGHT : (formScore >= 70 ? "#22C55E" : "#EF4444");
   const progress = exercise.duration > 0 ? elapsed / exercise.duration : 0;
 
   // Tracking badge style
@@ -1829,33 +1892,38 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
     "error":      { color: "#EF4444", label: "Limited" },
   }[trackingStatus] || { color: "#94A3B8", label: "Ready" };
 
-  // Auto-transition logic: when exercise ends, in auto mode, wait 5s then go to next
+  // Single, safe auto-advance: on rest, if hands-free, count down then advance.
+  // Guard with a ref so it can never fire twice (the old double-advance bug
+  // skipped exercises and crashed back to onboarding).
+  const advancedRef = useRef(false);
+  useEffect(() => { advancedRef.current = false; }, [exercise.id]);
   useEffect(() => {
-    if (phase === "rest" && workoutMode === "automatic" && nextExerciseBuffer === null) {
-      speak("Get ready for the next one, love.", "high");
-      let countdown = 5;
-      setNextBuffer(countdown);
+    if (phase !== "rest") return;
+    const isLast = currentIdx >= sessionList.length - 1;
+
+    if (isLast) {
+      const t = setTimeout(() => {
+        setPhase("complete");
+        speak("That is your session complete, mama. I am so proud of you for showing up today.", "high");
+      }, 3500);
+      return () => clearTimeout(t);
+    }
+
+    if (workoutMode === "automatic") {
+      speak("Beautiful. Get ready for the next one.", "high");
+      let c = 5;
+      setNextBuffer(c);
       const timer = setInterval(() => {
-        countdown--;
-        setNextBuffer(countdown);
-        if (countdown === 0) {
+        c--;
+        setNextBuffer(c);
+        if (c <= 0) {
           clearInterval(timer);
-          onNext();
+          if (!advancedRef.current) { advancedRef.current = true; setNextBuffer(null); onNext(); }
         }
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [phase, workoutMode, nextExerciseBuffer]);
-
-  // Rest auto-advance
-  useEffect(() => {
-    if (phase !== "rest") return;
-    const t = setTimeout(() => {
-      if (currentIdx < sessionList.length - 1) onNext();
-      else { setPhase("complete"); speak("That is your session complete, mama. I am so proud of you for showing up today."); }
-    }, 8000);
-    return () => clearTimeout(t);
-  }, [phase]);
+  }, [phase, exercise.id]);
 
   if (phase === "ready") return (
     <div style={{ background: "#0D0D0D", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
@@ -1869,9 +1937,24 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
       <p style={{ fontSize: 14, color: PLUM_LIGHT, lineHeight: 1.7, maxWidth: 320, marginBottom: 8 }}>
         KORE uses your camera to check your form in real time and guide you with gentle voice cues.
       </p>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 28 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         <span style={{ fontSize: 12, color: SAGE_DARK }}>Your video never leaves your device.</span>
+      </div>
+
+      {/* Mode choice — decided BEFORE starting */}
+      <div style={{ width: "100%", maxWidth: 320, marginBottom: 22 }}>
+        <div style={{ fontSize: 11, color: PLUM_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, textAlign: "left" }}>How should we move through your exercises?</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setWorkoutMode("automatic")} style={{ flex: 1, padding: "12px 10px", borderRadius: 12, border: `1.5px solid ${workoutMode === "automatic" ? PLUM_LIGHT : "rgba(255,255,255,0.15)"}`, background: workoutMode === "automatic" ? "rgba(201,168,187,0.15)" : "transparent", cursor: "pointer", textAlign: "left" }}>
+            <div style={{ fontSize: 13, color: WHITE, fontWeight: 600, marginBottom: 2 }}>Hands-free</div>
+            <div style={{ fontSize: 11, color: PLUM_LIGHT, lineHeight: 1.4 }}>KORE advances automatically — no need to get up</div>
+          </button>
+          <button onClick={() => setWorkoutMode("manual")} style={{ flex: 1, padding: "12px 10px", borderRadius: 12, border: `1.5px solid ${workoutMode === "manual" ? PLUM_LIGHT : "rgba(255,255,255,0.15)"}`, background: workoutMode === "manual" ? "rgba(201,168,187,0.15)" : "transparent", cursor: "pointer", textAlign: "left" }}>
+            <div style={{ fontSize: 13, color: WHITE, fontWeight: 600, marginBottom: 2 }}>Tap to advance</div>
+            <div style={{ fontSize: 11, color: PLUM_LIGHT, lineHeight: 1.4 }}>You control when each exercise begins</div>
+          </button>
+        </div>
       </div>
       <button
         onClick={async () => { unlockAudio(); await enableCamera(); setPhase("countdown"); }}
@@ -1937,14 +2020,22 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
 
-        {/* Form score */}
-        <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(0,0,0,0.65)", borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
-          <div style={{ fontSize: 10, color: PLUM_LIGHT, marginBottom: 2 }}>FORM</div>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: (camGranted && formDetected) ? scoreColor : TEXT_LIGHT }}>{(camGranted && formDetected) ? formScore : "—"}</div>
+        {/* Form score + reps */}
+        <div style={{ position: "absolute", top: 16, right: 16, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+          <div style={{ background: "rgba(0,0,0,0.65)", borderRadius: 12, padding: "8px 12px", textAlign: "center", minWidth: 64 }}>
+            <div style={{ fontSize: 10, color: PLUM_LIGHT, marginBottom: 2 }}>FORM</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: scoreColor }}>{(camGranted && formDetected) ? formScore : "—"}</div>
+          </div>
+          {phase === "active" && !/breath/i.test(exercise.name) && (
+            <div style={{ background: "rgba(0,0,0,0.65)", borderRadius: 12, padding: "8px 12px", textAlign: "center", minWidth: 64 }}>
+              <div style={{ fontSize: 10, color: PLUM_LIGHT, marginBottom: 2 }}>REPS</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: WHITE }}>{reps}<span style={{ fontSize: 13, color: TEXT_LIGHT }}>/{repTarget}</span></div>
+            </div>
+          )}
         </div>
 
         {/* PiP camera */}
-        <div style={{ position: "absolute", bottom: 16, right: 16, width: 96, height: 136, borderRadius: 14, overflow: "hidden", border: `2px solid ${camGranted ? (formScore >= 80 ? SAGE_DARK : "#B45309") : BORDER}` }}>
+        <div style={{ position: "absolute", bottom: 16, right: 16, width: 96, height: 136, borderRadius: 14, overflow: "hidden", border: `3px solid ${ringColor}`, transition: "border-color 0.3s" }}>
           {camGranted
             ? <video ref={cameraRef} autoPlay playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
             : <div style={{ width: "100%", height: "100%", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
@@ -1952,11 +2043,8 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
                 <span style={{ fontSize: 9, color: TEXT_LIGHT, textAlign: "center", padding: "0 6px" }}>Enable camera for AI tracking</span>
               </div>
           }
-          {camGranted && (
-            <div style={{ position: "absolute", top: 5, left: 5, background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "2px 6px", display: "flex", alignItems: "center", gap: 3 }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: trackingBadge.color, animation: trackingStatus === "loading" ? "pulse 1s infinite" : "none" }} />
-              <span style={{ color: WHITE, fontSize: 8 }}>{trackingBadge.label}</span>
-            </div>
+          {camGranted && formDetected && (
+            <div style={{ position: "absolute", top: 6, left: 6, width: 12, height: 12, borderRadius: "50%", background: formScore >= 70 ? "#22C55E" : "#EF4444", border: "2px solid rgba(255,255,255,0.9)", boxShadow: `0 0 8px ${formScore >= 70 ? "#22C55E" : "#EF4444"}` }} />
           )}
         </div>
 
@@ -1992,89 +2080,26 @@ function SessionScreen({ exercise, levelData, sessionList, currentIdx, onNext, o
           <span style={{ fontSize: 12, color: TEXT_LIGHT }}>{breathPhase === "inhale" ? "Inhale..." : "Exhale..."}</span>
         </div>
 
-        {/* Mode toggle (only show after first exercise) */}
-        {phase === "rest" && currentIdx > 0 && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button
-              onClick={() => setWorkoutMode("manual")}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                background: workoutMode === "manual" ? PLUM : "rgba(255,255,255,0.08)",
-                color: WHITE,
-                border: "none",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              Manual
-            </button>
-            <button
-              onClick={() => setWorkoutMode("automatic")}
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                background: workoutMode === "automatic" ? PLUM : "rgba(255,255,255,0.08)",
-                color: WHITE,
-                border: "none",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              Auto
-            </button>
-          </div>
-        )}
-
-        {/* Manual next button or auto countdown */}
+        {/* Rest controls — hands-free auto-advance or tap to advance */}
         {phase === "rest" && currentIdx < sessionList.length - 1 && (
-          nextExerciseBuffer !== null && workoutMode === "automatic" ? (
-            <div style={{ textAlign: "center", fontSize: 14, color: PLUM_LIGHT, marginBottom: 10, fontWeight: 600 }}>
-              Next in {nextExerciseBuffer}...
+          workoutMode === "automatic" ? (
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 14, color: PLUM_LIGHT, fontWeight: 600, marginBottom: 8 }}>
+                {nextExerciseBuffer !== null ? `Next exercise in ${nextExerciseBuffer}...` : "Rest a moment..."}
+              </div>
+              <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 10 }}>Stay where you are — KORE will start the next one for you.</div>
+              <button onClick={onNext} style={{ padding: "8px 18px", background: "rgba(255,255,255,0.1)", color: WHITE, border: "none", borderRadius: 50, fontSize: 13, cursor: "pointer" }}>Skip rest →</button>
             </div>
-          ) : workoutMode === "manual" ? (
-            <button
-              onClick={onNext}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: PLUM,
-                color: WHITE,
-                border: "none",
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                marginBottom: 10,
-                transition: "all 0.2s",
-              }}
-            >
-              Next Exercise
+          ) : (
+            <button onClick={onNext} style={{ width: "100%", padding: "13px 16px", background: PLUM, color: WHITE, border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12 }}>
+              Start Next Exercise
             </button>
-          ) : null
+          )
         )}
 
         {/* Exit button */}
-        {(phase === "rest" || currentIdx === sessionList.length - 1) && (
-          <button
-            onClick={onExit}
-            style={{
-              width: "100%",
-              padding: "10px 16px",
-              background: "rgba(255,255,255,0.1)",
-              color: TEXT_LIGHT,
-              border: "none",
-              borderRadius: 8,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
+        {phase === "rest" && (
+          <button onClick={onExit} style={{ width: "100%", padding: "10px 16px", background: "rgba(255,255,255,0.1)", color: TEXT_LIGHT, border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer", marginBottom: 12 }}>
             Exit Session
           </button>
         )}
@@ -2172,7 +2197,7 @@ function InstructionPanel({ exercise }) {
 }
 function PracticeTab({ userData }) {
   const [view, setView]         = useState("library");
-  const [activeLevel, setLevel] = useState("beginner");
+  const [activeLevel, setLevel] = useState(userData?.recommendedLevel || "beginner");
   const [selected, setSelected] = useState(null);
   const [sessionList, setSessionList] = useState([]);
   const [sessionIdx, setSessionIdx]   = useState(0);
@@ -2311,7 +2336,128 @@ function PracticeTab({ userData }) {
 }
 
 // ─── Check-in Tab ─────────────────────────────────────────────────────────────
-function CheckinTab() {
+// ─── Check-in Tab (selector: Daily Check-in | My Profile) ───────────────────
+function CheckinTab({ userData, setUserData }) {
+  const [section, setSection] = useState("checkin");
+  return (
+    <div style={{ padding: "24px 24px 0" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: SAGE, borderRadius: 50, padding: 3, marginBottom: 20 }}>
+        {[["checkin", "Daily Check-in"], ["profile", "My Profile"]].map(([id, label]) => (
+          <button key={id} onClick={() => setSection(id)} style={{ padding: "10px", borderRadius: 50, border: "none", cursor: "pointer", background: section === id ? WHITE : "transparent", color: section === id ? TEXT_DARK : TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: section === id ? 500 : 400, boxShadow: section === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+        ))}
+      </div>
+      {section === "checkin" ? <DailyCheckinSection /> : <ProfileSurvey userData={userData} setUserData={setUserData} />}
+    </div>
+  );
+}
+
+// ─── Comprehensive personalization survey (lives in Check-in → My Profile) ───
+function ProfileSurvey({ userData, setUserData }) {
+  const existing = userData?.profile || {};
+  const [birthType, setBirthType] = useState(existing.birthType || "");
+  const [activity, setActivity] = useState(existing.activity || "");
+  const [symptoms, setSymptoms] = useState(existing.symptoms || []);
+  const [goal, setGoal] = useState(existing.goal || "");
+  const [cleared, setCleared] = useState(existing.cleared || "");
+  const [weight, setWeight] = useState(existing.weight || "");
+  const [height, setHeight] = useState(existing.height || "");
+  const [saved, setSaved] = useState(false);
+
+  const birthOpts = ["Vaginal birth", "C-section", "Assisted delivery", "Prefer not to say"];
+  const activityOpts = [["Mostly resting", "Less than 1 walk a week"], ["Light & gentle", "Short walks, baby carrying"], ["Moderately active", "2–3 sessions a week"], ["Active", "Regular structured movement"]];
+  const symptomOpts = ["Belly bulging / coning", "Lower back pain", "Pelvic heaviness", "Leaking when sneezing", "Painful intimacy", "Low energy"];
+  const goalOpts = ["Close my diastasis gap", "Rebuild core strength", "Stop leaking", "Reduce back pain", "Return to exercise"];
+  const clearedOpts = ["Yes, I'm cleared", "Not yet", "Unsure"];
+
+  const toggleSym = (s) => setSymptoms(symptoms.includes(s) ? symptoms.filter(x => x !== s) : [...symptoms, s]);
+
+  // Derive a recommended starting level from the answers + postpartum stage
+  const deriveLevel = () => {
+    const stage = userData?.postpartumStage || "";
+    if (cleared === "Not yet" || activity === "Mostly resting" || stage.includes("1 – 6")) return "beginner";
+    if (activity === "Active" && (stage.includes("1 – 2") || stage.includes("3 years"))) return "advanced";
+    if (activity === "Moderately active" || activity === "Active") return "intermediate";
+    return "beginner";
+  };
+
+  const handleSave = () => {
+    const profile = { birthType, activity, symptoms, goal, cleared, weight, height };
+    const recommendedLevel = deriveLevel();
+    setUserData({ ...userData, profile, recommendedLevel });
+    try { localStorage.setItem("kore_survey_completed", "true"); } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3500);
+  };
+
+  const recommendedLevel = deriveLevel();
+  const levelLabel = { beginner: "Beginner — Foundation & re-activation", intermediate: "Intermediate — Progression & stability", advanced: "Advanced — Functional strength" }[recommendedLevel];
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Personalize your plan</div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 8 }}>Tell us about your body</h2>
+      <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 20 }}>These answers shape which exercises are safe for you and what your plan focuses on. Update them anytime.</p>
+
+      {/* Birth type */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 10 }}>How was your baby born?</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+        {birthOpts.map(o => <ChoiceRow key={o} label={o} selected={birthType === o} onClick={() => setBirthType(o)} />)}
+      </div>
+
+      {/* Activity */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 10 }}>How active are you right now?</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+        {activityOpts.map(([l, s]) => <ChoiceRow key={l} label={l} sublabel={s} selected={activity === l} onClick={() => setActivity(l)} />)}
+      </div>
+
+      {/* Symptoms */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 4 }}>Which symptoms are you noticing?</div>
+      <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 10 }}>Select all that apply</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 22 }}>
+        {symptomOpts.map(s => { const sel = symptoms.includes(s); return <span key={s} onClick={() => toggleSym(s)} style={{ padding: "8px 14px", borderRadius: 20, border: `1px solid ${sel ? PLUM : BORDER}`, background: sel ? PLUM_PALE : WHITE, color: sel ? PLUM_DARK : TEXT_MID, fontSize: 13, cursor: "pointer" }}>{s}</span>; })}
+      </div>
+
+      {/* Goal */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 10 }}>What matters most to you?</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+        {goalOpts.map(o => <ChoiceRow key={o} label={o} selected={goal === o} onClick={() => setGoal(o)} />)}
+      </div>
+
+      {/* Doctor cleared */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 10 }}>Has your doctor cleared you to exercise?</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+        {clearedOpts.map(o => <ChoiceRow key={o} label={o} selected={cleared === o} onClick={() => setCleared(o)} />)}
+      </div>
+
+      {/* Measurements */}
+      <div style={{ fontSize: 13, fontWeight: 500, color: TEXT_DARK, marginBottom: 10 }}>Optional measurements (for tracking only)</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 22 }}>
+        {[["WEIGHT (KG)", weight, setWeight, "e.g. 68"], ["HEIGHT (CM)", height, setHeight, "e.g. 165"]].map(([lbl, val, set, ph]) => (
+          <div key={lbl}><div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{lbl}</div><input value={val} onChange={e => set(e.target.value)} placeholder={ph} style={{ width: "100%", padding: "13px 18px", borderRadius: 50, border: `1.5px solid ${val ? PLUM : BORDER}`, background: WHITE, fontSize: 15, color: TEXT_DARK, outline: "none", fontFamily: "'DM Sans', sans-serif" }} /></div>
+        ))}
+      </div>
+
+      {/* Live personalization preview */}
+      {(activity || goal) && (
+        <div style={{ background: PLUM_PALE, borderRadius: 14, border: `1px solid ${PLUM_LIGHT}`, padding: "16px 18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: PLUM, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 6 }}>Your tailored plan</div>
+          <div style={{ fontSize: 14, color: TEXT_DARK, lineHeight: 1.6 }}>
+            Recommended starting level: <strong>{levelLabel}</strong>
+            {goal ? <> · focused on <strong>{goal.toLowerCase()}</strong></> : null}
+            {cleared === "Not yet" ? <><br/><span style={{ color: "#B45309" }}>We'll keep things extra gentle until your doctor clears you.</span></> : null}
+          </div>
+        </div>
+      )}
+
+      <button onClick={handleSave} style={{ width: "100%", padding: "15px", borderRadius: 50, background: saved ? SAGE_DARK : PLUM, color: WHITE, border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 24, transition: "background 0.2s" }}>
+        {saved ? "✓ Plan personalized" : "Save & personalize my plan"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Check-in: daily section ────────────────────────────────────────────────
+function DailyCheckinSection() {
   const [feeling, setFeeling] = useState("Pushing through");
   const [journal, setJournal] = useState("");
   const [gap, setGap] = useState("");
@@ -2329,7 +2475,7 @@ function CheckinTab() {
   const currentStep = assessmentSteps[assessStep - 1];
 
   return (
-    <div style={{ padding: "24px 24px 0" }}>
+    <div>
       <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>April 23 · Check-in</div>
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 20 }}>How are you today?</h2>
 
@@ -2784,6 +2930,84 @@ function setSubscription(stage) {
   } catch {}
 }
 
+function ProfileScreen({ userData, onBack, onEdit, onOpenPlan }) {
+  const p = userData?.profile || {};
+  const name = userData?.name || "Mama";
+  const initial = name.trim().charAt(0).toUpperCase() || "K";
+  const stage = userData?.postpartumStage || "Not set";
+  const levelLabel = { beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" }[userData?.recommendedLevel] || "Beginner";
+  const hasProfile = p.goal || p.activity || p.birthType;
+
+  const Row = ({ label, value }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${CREAM_DARK}`, gap: 16 }}>
+      <span style={{ fontSize: 13, color: TEXT_MID }}>{label}</span>
+      <span style={{ fontSize: 14, color: TEXT_DARK, fontWeight: 500, textAlign: "right", maxWidth: "60%" }}>{value || "—"}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: CREAM }}>
+      <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10 }}>
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 14 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <KoreLogo size={28} />
+      </div>
+
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "28px 22px 60px" }}>
+        {/* Identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: PLUM, color: WHITE, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display', serif", fontSize: 28 }}>{initial}</div>
+          <div>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK }}>{name}</h1>
+            <div style={{ fontSize: 13, color: TEXT_MID }}>{stage} postpartum</div>
+          </div>
+        </div>
+
+        {/* Plan summary */}
+        <div onClick={() => onOpenPlan && onOpenPlan()} style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 16, padding: "18px 20px", marginBottom: 16, color: WHITE, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, color: PLUM_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Current plan</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 18 }}>Monthly Maintenance · Active</div>
+          </div>
+          <span style={{ color: PLUM_LIGHT, fontSize: 20 }}>›</span>
+        </div>
+
+        {/* Recommended focus */}
+        <div style={{ background: PLUM_PALE, borderRadius: 14, border: `1px solid ${PLUM_LIGHT}`, padding: "16px 18px", marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: PLUM, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Your tailored focus</div>
+          <div style={{ fontSize: 14, color: TEXT_DARK, lineHeight: 1.6 }}>
+            Starting level: <strong>{levelLabel}</strong>{p.goal ? <> · focused on <strong>{p.goal.toLowerCase()}</strong></> : null}
+          </div>
+        </div>
+
+        {/* Profile details */}
+        <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: "6px 20px 16px", marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", padding: "14px 0 4px" }}>Your profile</div>
+          <Row label="Primary goal" value={p.goal} />
+          <Row label="Birth type" value={p.birthType} />
+          <Row label="Activity level" value={p.activity} />
+          <Row label="Symptoms" value={(p.symptoms && p.symptoms.length) ? p.symptoms.join(", ") : "—"} />
+          <Row label="Doctor cleared" value={p.cleared} />
+          <Row label="Weight" value={p.weight ? `${p.weight} kg` : "—"} />
+          <Row label="Height" value={p.height ? `${p.height} cm` : "—"} />
+        </div>
+
+        {!hasProfile && (
+          <div style={{ background: SAGE, borderRadius: 14, padding: "14px 18px", marginBottom: 16, fontSize: 13, color: TEXT_MID, lineHeight: 1.6 }}>
+            Complete your profile survey to personalize your plan — it only takes a minute.
+          </div>
+        )}
+
+        <button onClick={() => onEdit && onEdit()} style={{ width: "100%", padding: "14px", borderRadius: 50, background: PLUM, color: WHITE, border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+          {hasProfile ? "Edit my profile" : "Complete my profile"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PlanScreen({ onBack }) {
   const [sub, setSub] = useState(getSubscription());
   const paid = new Date(sub.paymentDate);
@@ -2845,7 +3069,7 @@ function PlanScreen({ onBack }) {
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
             <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, color: TEXT_DARK }}>₦12,000</span>
-            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $8.73 USD</span>
+            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $9 USD</span>
           </div>
           <p style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>Covers the mandatory 8-week healing window for abdominal separation — long enough to see real, measurable progress before you continue.</p>
           <button onClick={() => activate("foundation")} style={{ width: "100%", padding: "13px", borderRadius: 50, background: PLUM, border: "none", color: WHITE, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Activate Foundation Pass</button>
@@ -2861,7 +3085,7 @@ function PlanScreen({ onBack }) {
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
             <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, color: TEXT_DARK }}>₦7,500</span>
-            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $5.46 USD / month</span>
+            <span style={{ fontSize: 14, color: TEXT_MID }}>≈ $5 USD / month</span>
           </div>
           <p style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>Unlocks advanced progressions, Mama Circles community, and continuous access to the Myth-Buster bot for long-term core health.</p>
           <button onClick={() => activate("maintenance")} style={{ width: "100%", padding: "13px", borderRadius: 50, background: WHITE, border: `1px solid ${PLUM}`, color: PLUM, fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Switch to Monthly</button>
@@ -3023,11 +3247,11 @@ export default function App() {
   const [onboardStep, setOnboardStep] = useState(1);
   const [userData, setUserData] = usePersistedState("kore_user_data", {});
   const [activeTab, setActiveTab] = useState("home");
-  const [showSurvey, setShowSurvey] = useState(!hasSurveyBeenCompleted()); // Hide if already completed
+  const [showSurvey, setShowSurvey] = useState(false); // moved into Check-in → Profile survey
 
   const [howItWorksFrom, setHowItWorksFrom] = useState("landing");
 
-  const goNext = () => { if (onboardStep < 6) setOnboardStep(onboardStep + 1); else setScreen("app"); };
+  const goNext = () => { if (onboardStep < 2) setOnboardStep(onboardStep + 1); else setScreen("app"); };
   const goBack = () => { if (onboardStep > 1) setOnboardStep(onboardStep - 1); else setScreen("landing"); };
   const startOnboard = () => { setOnboardStep(1); setScreen("onboard"); };
   const goHowItWorksFromLanding = () => { setHowItWorksFrom("landing"); setScreen("howitworks"); };
@@ -3052,8 +3276,12 @@ export default function App() {
     <><style>{fonts}{globalStyle}</style><PlanScreen onBack={() => { setScreen("app"); setActiveTab("home"); }} /></>
   );
 
+  if (screen === "profile") return (
+    <><style>{fonts}{globalStyle}</style><ProfileScreen userData={userData} onBack={() => { setScreen("app"); setActiveTab("home"); }} onEdit={() => { setScreen("app"); setActiveTab("checkin"); }} onOpenPlan={() => setScreen("plan")} /></>
+  );
+
   if (screen === "onboard") {
-    const steps = [Step1, Step2, Step3, Step4, Step5, Step6];
+    const steps = [Step1, Step2];
     const StepComp = steps[onboardStep - 1];
     return (
       <><style>{fonts}{globalStyle}</style><StepComp step={onboardStep} onNext={goNext} onBack={goBack} data={userData} setData={setUserData} /></>
@@ -3063,17 +3291,15 @@ export default function App() {
   const tabMap = {
     home: <HomeTab userData={userData} setActiveTab={setActiveTab} onOpenPlan={() => setScreen("plan")} />,
     practice: <PracticeTab userData={userData} />,
-    checkin: <CheckinTab />,
+    checkin: <CheckinTab userData={userData} setUserData={setUserData} />,
     circle: <CircleTab />,
     resources: <ResourcesTab onHowItWorks={goHowItWorksFromApp} />,
   };
 
   return (
     <><style>{fonts}{globalStyle}</style>
-    <OnboardingSurveyModal isOpen={showSurvey && screen === "app"} onComplete={handleSurveyComplete} />
-    <AppShell activeTab={activeTab} setActiveTab={setActiveTab}>
+    <AppShell activeTab={activeTab} setActiveTab={setActiveTab} onProfile={() => setScreen("profile")}>
       {tabMap[activeTab]}
-      <MythBusterBot />
     </AppShell>
     </>
   );
