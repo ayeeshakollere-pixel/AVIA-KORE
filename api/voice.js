@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   const apiKey  = process.env.ELEVENLABS_API_KEY;
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "bBgEsqh31Yb4Bbuj4v30";
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || "POFIFgcE9v8bYUnEBJ10";
 
   if (!apiKey) {
     return res.status(500).json({ error: "Voice service unavailable" });
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           text,
-          model_id: "eleven_multilingual_v2",
+          model_id: "eleven_flash_v2",
           voice_settings: {
             stability: 0.55,         // warmth + consistency balance
             similarity_boost: 0.85,  // stays close to your custom Tolani voice
