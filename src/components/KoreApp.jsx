@@ -333,7 +333,7 @@ function AboutScreen({ onBack, backLabel = "Back" }) {
           <p style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 21, color: WHITE, lineHeight: 1.6, position: "relative" }}>
             "We aren't just building an app; we are building the recovery system every single mother deserves."
           </p>
-          <div style={{ fontSize: 12, color: PLUM_LIGHT, letterSpacing: 2, textTransform: "uppercase", marginTop: 16, position: "relative" }}>— Founder, KORE</div>
+          <div style={{ fontSize: 12, color: PLUM_LIGHT, letterSpacing: 2, textTransform: "uppercase", marginTop: 16, position: "relative" }}>— Abubakar Aisha Musa, Founder of KORE</div>
         </div>
 
         {/* Pillars */}
