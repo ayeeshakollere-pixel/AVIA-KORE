@@ -57,9 +57,9 @@ if (!ttsResponse.ok) {
     // Direct streaming to bypass Vercel memory buffer limits completely
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store, max-age=0");
-    
-    const nodeStream = require("stream").Readable.from(ttsResponse.body);
-    nodeStream.pipe(res);
+
+    const responseStream = ttsResponse.body;
+    return responseStream.pipeTo(new WritableStream({ write(chunk) { res.write(chunk); }, close() { res.end(); } }));
   } catch (err) {
     return res.status(500).json({ error: "Voice service error" });
   }
