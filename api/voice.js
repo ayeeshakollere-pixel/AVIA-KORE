@@ -1,20 +1,66 @@
-// /api/voice.js — Vercel Serverless Function
-// ─────────────────────────────────────────────────────────────────────────────
-// Proxies text-to-speech requests to ElevenLabs using a custom voice.
-// The API key is read from Vercel Environment Variables — it is NEVER
-// exposed to the browser or committed to GitHub.
+// api/voice.js — ElevenLabs TTS proxy (debug-friendly version)
 //
 // Environment variables required (set in Vercel dashboard):
-//   ELEVENLABS_API_KEY  — your secret key (sk_...)
-//   ELEVENLABS_VOICE_ID —( POFIFgcE9v8bYUnEBJ10 )
+//   ELEVENLABS_API_KEY   — your secret key (sk_...)
+//   ELEVENLABS_VOICE_ID  — the voice ID from THIS account
+//
+// ⚠️  IMPORTANT: Vercel env vars only apply to deployments made AFTER
+//     the variable was added/changed. Always Redeploy after editing them.
+//
+// 🔍 DIAGNOSTIC MODE: open https://YOUR-APP.vercel.app/api/voice in a
+//     browser (a normal GET request) and it will tell you exactly what
+//     is wrong: bad key, blocked account, or voice ID not on this account.
 
 export default async function handler(req, res) {
+  const apiKey = (process.env.ELEVENLABS_API_KEY || "").trim();
+  // Fallback is "Rachel" — a default voice that exists on EVERY account,
+  // so audio still works even if the voice ID env var is wrong.
+  const voiceId = (process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM").trim();
+
+  // ── DIAGNOSTIC: visit /api/voice in your browser ───────────────────────
+  if (req.method === "GET") {
+    if (!apiKey) {
+      return res.status(200).json({
+        ok: false,
+        problem: "ELEVENLABS_API_KEY is missing in this deployment.",
+        fix: "Check the env var exists in Vercel, then REDEPLOY (Deployments → ⋯ → Redeploy). Env vars do not apply to old deployments.",
+      });
+    }
+    try {
+      const check = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: { "xi-api-key": apiKey },
+      });
+      const data = await check.json().catch(() => ({}));
+      if (!check.ok) {
+        return res.status(200).json({
+          ok: false,
+          problem: "ElevenLabs rejected the API key.",
+          elevenlabs_status: check.status,
+          elevenlabs_says: data,
+          fix: "If status is 401: the key is wrong, has extra spaces, or ElevenLabs blocked this account (look for 'detected_unusual_activity' — they block duplicate free accounts). If blocked, you need a paid starter plan or a genuinely different account.",
+        });
+      }
+      const voices = (data.voices || []).map(v => ({ name: v.name, voice_id: v.voice_id }));
+      const found = voices.some(v => v.voice_id === voiceId);
+      return res.status(200).json({
+        ok: found,
+        keyWorks: true,
+        usingVoiceId: voiceId,
+        voiceFoundOnThisAccount: found,
+        fix: found
+          ? "Everything looks good. If the app still uses the robot voice, hard-refresh the app page."
+          : "This voice ID does NOT exist on the account this key belongs to (Tolani probably lives on your old account). Copy one of the voice_ids below into the ELEVENLABS_VOICE_ID env var in Vercel, then Redeploy.",
+        voicesOnThisAccount: voices,
+      });
+    } catch (err) {
+      return res.status(200).json({ ok: false, problem: "Could not reach ElevenLabs", detail: String(err) });
+    }
+  }
+
+  // ── NORMAL TTS PATH (POST) ──────────────────────────────────────────────
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "bBgEsqh31Yb4Bbuj4v30";
 
   if (!apiKey) {
     return res.status(500).json({ error: "Missing API key configuration" });
@@ -46,15 +92,24 @@ export default async function handler(req, res) {
     );
 
     if (!ttsResponse.ok) {
-      return res.status(502).json({ error: "Voice generation failed" });
+      // Surface the REAL ElevenLabs error instead of a generic 502,
+      // and log it so it shows up in Vercel → Logs.
+      const detail = await ttsResponse.text().catch(() => "");
+      console.error("ElevenLabs error:", ttsResponse.status, detail);
+      return res.status(502).json({
+        error: "Voice generation failed",
+        elevenlabs_status: ttsResponse.status,
+        detail: detail.slice(0, 500),
+      });
     }
 
     const audioBuffer = await ttsResponse.arrayBuffer();
-    
+
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store, max-age=0");
     return res.status(200).send(Buffer.from(audioBuffer));
   } catch (err) {
+    console.error("Voice service error:", err);
     return res.status(500).json({ error: "Voice service error" });
   }
 }
