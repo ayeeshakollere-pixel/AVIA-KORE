@@ -9,57 +9,51 @@
 //   ELEVENLABS_VOICE_ID —( POFIFgcE9v8bYUnEBJ10 )
 
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey  = process.env.ELEVENLABS_API_KEY;
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || "POFIFgcE9v8bYUnEBJ10";
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || "bBgEsqh31Yb4Bbuj4v30";
 
   if (!apiKey) {
-    return res.status(500).json({ error: "Voice service unavailable" });
-  }
-
-  const { text } = req.body || {};
-  if (!text || typeof text !== "string" || text.length > 600) {
-    return res.status(400).json({ error: "Invalid text payload" });
+    return res.status(500).json({ error: "Missing API key configuration" });
   }
 
   try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: "Missing text in request body" });
+    }
+
     const ttsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         method: "POST",
         headers: {
-          "Accept": "audio/mpeg",
           "Content-Type": "application/json",
           "xi-api-key": apiKey,
         },
         body: JSON.stringify({
-          text,
+          text: text,
           model_id: "eleven_flash_v2",
           voice_settings: {
-            stability: 0.55,         // warmth + consistency balance
-            similarity_boost: 0.85,  // stays close to your custom Tolani voice
-            style: 0.35,             // natural, kind delivery
-            use_speaker_boost: true,
+            stability: 0.5,
+            similarity_boost: 0.75,
           },
         }),
       }
     );
-if (!ttsResponse.ok) {
-      const errText = await ttsResponse.text();
-      console.error("ElevenLabs error details:", errText);
+
+    if (!ttsResponse.ok) {
       return res.status(502).json({ error: "Voice generation failed" });
     }
 
-    // Direct streaming to bypass Vercel memory buffer limits completely
+    const audioBuffer = await ttsResponse.arrayBuffer();
+    
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store, max-age=0");
-
-    const responseStream = ttsResponse.body;
-    return responseStream.pipeTo(new WritableStream({ write(chunk) { res.write(chunk); }, close() { res.end(); } }));
+    return res.status(200).send(Buffer.from(audioBuffer));
   } catch (err) {
     return res.status(500).json({ error: "Voice service error" });
   }
