@@ -6,7 +6,7 @@
 //
 // Environment variables required (set in Vercel dashboard):
 //   ELEVENLABS_API_KEY  — your secret key (sk_...)
-//   ELEVENLABS_VOICE_ID — bBgEsqh31Yb4Bbuj4v30 (Tolani.kore)
+//   ELEVENLABS_VOICE_ID —( POFIFgcE9v8bYUnEBJ10 )
 
 export default async function handler(req, res) {
   // Only allow POST
@@ -48,16 +48,18 @@ export default async function handler(req, res) {
         }),
       }
     );
-
-    if (!ttsResponse.ok) {
+if (!ttsResponse.ok) {
+      const errText = await ttsResponse.text();
+      console.error("ElevenLabs error details:", errText);
       return res.status(502).json({ error: "Voice generation failed" });
     }
 
-    // Stream the audio back to the browser
-    const audioBuffer = await ttsResponse.arrayBuffer();
+    // Direct streaming to bypass Vercel memory buffer limits completely
     res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Cache-Control", "no-store");
-    return res.status(200).send(Buffer.from(audioBuffer));
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    
+    const nodeStream = require("stream").Readable.from(ttsResponse.body);
+    nodeStream.pipe(res);
   } catch (err) {
     return res.status(500).json({ error: "Voice service error" });
   }
