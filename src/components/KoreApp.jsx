@@ -251,7 +251,7 @@ function OnboardingShell({ step, total, children }) {
   );
 }
 
-function AppShell({ activeTab, setActiveTab, children, onProfile }) {
+function AppShell({ activeTab, setActiveTab, children, onProfile, onAbout }) {
   const tabs = [
     { id: "home", label: "Home", Icon: IconHome },
     { id: "practice", label: "Practice", Icon: IconPractice },
@@ -262,7 +262,7 @@ function AppShell({ activeTab, setActiveTab, children, onProfile }) {
   return (
     <div style={{ minHeight: "100vh", background: CREAM, display: "flex", flexDirection: "column" }}>
       <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 }}>
-        <div onClick={() => onProfile && onProfile()} style={{ cursor: "pointer" }} title="View your profile"><KoreLogo /></div>
+        <div onClick={() => onAbout && onAbout()} style={{ cursor: "pointer" }} title="About KORE — our story"><KoreLogo /></div>
         <button onClick={() => onProfile && onProfile()} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }} title="View your profile">
           <span style={{ fontSize: 11, letterSpacing: 2, color: TEXT_LIGHT, textTransform: "uppercase" }}>Profile</span>
           <div style={{ width: 30, height: 30, borderRadius: "50%", background: PLUM_PALE, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -286,13 +286,75 @@ function AppShell({ activeTab, setActiveTab, children, onProfile }) {
   );
 }
 
+// ─── About Us ─────────────────────────────────────────────────────────────────
+// Reached by tapping the KORE logo (top-left, on the landing page or in-app).
+function AboutScreen({ onBack, backLabel = "Back" }) {
+  return (
+    <div style={{ minHeight: "100vh", background: CREAM }}>
+      {/* Top bar */}
+      <div style={{ background: WHITE, borderBottom: `1px solid ${BORDER}`, padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 10 }}>
+        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 14 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MID} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          {backLabel}
+        </button>
+        <KoreLogo size={28} />
+      </div>
+
+      <div style={{ maxWidth: 620, margin: "0 auto", padding: "40px 24px 60px" }}>
+        {/* Hero */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <KoreCrest size={72} />
+          </div>
+          <div style={{ display: "inline-block", background: PLUM_PALE, color: PLUM, padding: "6px 18px", borderRadius: 20, fontSize: 12, fontWeight: 500, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>About us</div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 36, color: TEXT_DARK, lineHeight: 1.2 }}>
+            Born out of <em style={{ color: PLUM }}>lived experience.</em>
+          </h1>
+        </div>
+
+        {/* Founder story */}
+        <div style={{ background: WHITE, borderRadius: 20, border: `1px solid ${BORDER}`, padding: "32px 28px", marginBottom: 24 }}>
+          <p style={{ fontSize: 16, color: TEXT_DARK, lineHeight: 1.85, marginBottom: 20 }}>
+            KORE was born out of lived experience. As a young mother navigating the postpartum reality, I was deeply shocked by the structural gaps in maternal healthcare. Despite knowing something was fundamentally wrong with my physical recovery, clinical dismissal was the norm. I was handed generic, unguided advice like "just do some exercises" or "do your Kegels," with absolutely no direction on where to start, how to execute them safely, or how to heal.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "22px 0" }}>
+            <span style={{ flex: 1, height: 1, background: BORDER }} />
+            <svg width="12" height="12" viewBox="0 0 10 10"><path d="M 5 1 Q 9 3, 5 9 Q 1 3, 5 1 Z" fill={SAGE_DARK}/></svg>
+            <span style={{ flex: 1, height: 1, background: BORDER }} />
+          </div>
+          <p style={{ fontSize: 16, color: TEXT_DARK, lineHeight: 1.85 }}>
+            I realized millions of mothers are left in this exact structural blackout—navigating complex bodily trauma entirely in isolation. I built KORE to change that trajectory forever, replacing systemic medical silence with data-driven, privacy-first, empathetic clinical guidance.
+          </p>
+        </div>
+
+        {/* Mission pull-quote */}
+        <div style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 20, padding: "32px 28px", textAlign: "center", marginBottom: 24, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", right: -24, top: -24, width: 110, height: 110, borderRadius: "50%", background: WHITE, opacity: 0.06 }} />
+          <p style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 21, color: WHITE, lineHeight: 1.6, position: "relative" }}>
+            "We aren't just building an app; we are building the recovery system every single mother deserves."
+          </p>
+          <div style={{ fontSize: 12, color: PLUM_LIGHT, letterSpacing: 2, textTransform: "uppercase", marginTop: 16, position: "relative" }}>— Founder, KORE</div>
+        </div>
+
+        {/* Pillars */}
+        <div style={{ background: SAGE, borderRadius: 16, padding: "20px 24px", textAlign: "center" }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 16, color: TEXT_DARK, marginBottom: 6 }}>"Strength, dignity, empathy, truth."</p>
+          <p style={{ fontSize: 12, color: TEXT_MID, letterSpacing: 1, textTransform: "uppercase" }}>The four pillars we build around you</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Landing ──────────────────────────────────────────────────────────────────
-function Landing({ onStart, onHowItWorks }) {
+function Landing({ onStart, onHowItWorks, onAbout }) {
   return (
     <div style={{ minHeight: "100vh", background: CREAM, padding: 32 }}>
-      {/* Top-left brand mark */}
+      {/* Top-left brand mark — tap to read our story */}
       <div style={{ marginBottom: 24 }}>
-        <KoreLogo size={36} />
+        <div onClick={() => onAbout && onAbout()} style={{ display: "inline-block", cursor: "pointer" }} title="About KORE — our story">
+          <KoreLogo size={36} />
+        </div>
       </div>
       <div style={{ display: "flex", gap: 48, alignItems: "center", minHeight: "75vh" }}>
         <div style={{ flex: 1 }}>
@@ -2465,17 +2527,173 @@ function PracticeTab({ userData }) {
 }
 
 // ─── Check-in Tab ─────────────────────────────────────────────────────────────
-// ─── Check-in Tab (selector: Daily Check-in | My Profile) ───────────────────
+// ─── Check-in Tab (3 sections: Feelings & Journal | Assessment | My Profile) ─
 function CheckinTab({ userData, setUserData }) {
-  const [section, setSection] = useState("checkin");
+  const [section, setSection] = useState("feelings");
   return (
     <div style={{ padding: "24px 24px 0" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", background: SAGE, borderRadius: 50, padding: 3, marginBottom: 20 }}>
-        {[["checkin", "Daily Check-in"], ["profile", "My Profile"]].map(([id, label]) => (
-          <button key={id} onClick={() => setSection(id)} style={{ padding: "10px", borderRadius: 50, border: "none", cursor: "pointer", background: section === id ? WHITE : "transparent", color: section === id ? TEXT_DARK : TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: section === id ? 500 : 400, boxShadow: section === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", background: SAGE, borderRadius: 50, padding: 3, marginBottom: 20 }}>
+        {[["feelings", "Feelings"], ["assessment", "Assessment"], ["profile", "My Profile"]].map(([id, label]) => (
+          <button key={id} onClick={() => setSection(id)} style={{ padding: "10px 4px", borderRadius: 50, border: "none", cursor: "pointer", background: section === id ? WHITE : "transparent", color: section === id ? TEXT_DARK : TEXT_MID, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: section === id ? 500 : 400, boxShadow: section === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
         ))}
       </div>
-      {section === "checkin" ? <DailyCheckinSection /> : <ProfileSurvey userData={userData} setUserData={setUserData} />}
+      {section === "feelings" ? <FeelingsJournalSection /> : section === "assessment" ? <AssessmentSection /> : <ProfileSurvey userData={userData} setUserData={setUserData} />}
+    </div>
+  );
+}
+
+// ─── Check-in: Feelings & Journal section ────────────────────────────────────
+// How you're feeling + your private journal, separated from the assessment.
+function FeelingsJournalSection() {
+  const [feeling, setFeeling] = useState("Pushing through");
+  const [journal, setJournal] = useState("");
+  const [saved, setSaved] = useState(false);
+  const feelings = ["Demotivated", "Overwhelmed", "Tired", "Pushing through", "Calm", "Happy", "Energized", "Stronger"];
+
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>April 23 · Check-in</div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 20 }}>How are you today?</h2>
+
+      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>How are you feeling?</div>
+          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Tap all that apply</div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {feelings.map(f => { const sel = feeling === f; return <span key={f} onClick={() => setFeeling(f)} style={{ padding: "8px 16px", borderRadius: 20, cursor: "pointer", fontSize: 14, background: sel ? PLUM : WHITE, color: sel ? WHITE : TEXT_DARK, border: `1px solid ${sel ? PLUM : BORDER}`, fontFamily: "'DM Sans', sans-serif" }}>{f}</span>; })}
+        </div>
+      </div>
+
+      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>Your private journal</div>
+          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Only you can see this</div>
+        </div>
+        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 12 }}>A safe space to write whatever's on your heart today, mama.</p>
+        <textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Today I feel..." style={{ width: "100%", minHeight: 140, border: "none", background: CREAM_DARK, borderRadius: 10, padding: "14px", fontSize: 14, color: TEXT_DARK, resize: "none", outline: "none", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.6 }} />
+      </div>
+
+      <div style={{ background: SAGE, borderRadius: 14, padding: "14px 18px", display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <span style={{ fontSize: 13, color: TEXT_MID }}>Your feelings and journal stay on your device. Never shared, never judged.</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        <PillButton label={saved ? "✓ Saved" : "Save today's entry"} onClick={handleSave} style={{ padding: "14px", borderRadius: 50, background: saved ? SAGE_DARK : PLUM }} />
+        <PillButton label="Save draft" variant="outline" style={{ padding: "14px", borderRadius: 50 }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Check-in: Assessment section ────────────────────────────────────────────
+// On-device self-assessment, abdominal measurement + secure photo, and summary.
+function AssessmentSection() {
+  const [gap, setGap] = useState("");
+  const [assessStep, setAssessStep] = useState(1); // 1-4
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+
+  const assessmentSteps = [
+    { num: 1, title: "Lie down comfortably", desc: "Find a flat surface. Lie on your back with knees bent and feet flat on the floor. Relax your shoulders.", icon: "knees" },
+    { num: 2, title: "Locate your separation", desc: "Place your fingers horizontally above the navel, between the two sides of your rectus abdominis muscle.", icon: "hands" },
+    { num: 3, title: "Measure your gap", desc: "Press gently and count how many fingers fit between the muscle bellies. Relax and repeat 2–3 times.", icon: "measure" },
+    { num: 4, title: "Record your baseline", desc: "Write down the number. This is your starting point. We'll track progress together from here.", icon: "record" },
+  ];
+
+  const currentStep = assessmentSteps[assessStep - 1];
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>April 23 · On-device assessment</div>
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 20 }}>Check in with your body</h2>
+
+      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>Self-assessment</div>
+          <span style={{ background: SAGE, padding: "4px 12px", borderRadius: 20, fontSize: 12, color: TEXT_MID }}>Step {assessStep} / 4</span>
+        </div>
+        <div style={{ textAlign: "center", marginBottom: 12 }}>
+          <svg width={80} height={60} viewBox="0 0 80 60"><circle cx={40} cy={14} r={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><ellipse cx={40} cy={42} rx={22} ry={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><circle cx={40} cy={42} r={4} fill={SAGE_DARK}/></svg>
+          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Knees bent · Back flat</div>
+        </div>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>{currentStep.title}</h3>
+        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>{currentStep.desc}</p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 16 }}>
+          {[0, 1, 2, 3].map(i => <div key={i} style={{ width: i < assessStep ? 24 : 8, height: 4, borderRadius: 3, background: i < assessStep ? PLUM : CREAM_DARK, transition: "all 0.3s" }} />)}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          {assessStep > 1 && (
+            <button onClick={() => setAssessStep(assessStep - 1)} style={{ flex: 1, padding: "14px", borderRadius: 50, border: `1px solid ${BORDER}`, background: WHITE, fontSize: 14, fontWeight: 500, cursor: "pointer", color: TEXT_DARK }}>
+              ‹ Back
+            </button>
+          )}
+          <button onClick={() => assessStep < 4 ? setAssessStep(assessStep + 1) : null} style={{ flex: 1, padding: "14px", borderRadius: 50, background: assessStep === 4 ? SAGE : PLUM, color: WHITE, border: "none", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+            {assessStep === 4 ? "✓ Complete" : "Next step ›"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Abdominal measurement</div>
+        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 12 }}>Measure at the widest point above the navel.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <input value={gap} onChange={e => setGap(e.target.value)} placeholder="Enter cm" style={{ flex: 1, padding: "13px 18px", borderRadius: 50, border: `1px solid ${BORDER}`, background: CREAM_DARK, fontSize: 15, color: TEXT_DARK, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
+          <span style={{ fontSize: 14, color: TEXT_MID }}>cm</span>
+        </div>
+        <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 14 }}>Last: 3.2 cm</div>
+        <button onClick={() => setShowPhotoMenu(true)} style={{ width: "100%", background: SAGE, borderRadius: 10, padding: "12px 16px", border: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span style={{ fontSize: 13, color: TEXT_MID, fontFamily: "'DM Sans', sans-serif" }}>Attach a secure photo (on-device)</span>
+        </button>
+      </div>
+
+      {/* Photo menu modal */}
+      {showPhotoMenu && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 9999 }}>
+          <div style={{ width: "100%", background: WHITE, borderRadius: "20px 20px 0 0", padding: "20px", paddingBottom: 40 }}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK, marginBottom: 4 }}>Add measurement photo</h3>
+              <p style={{ fontSize: 13, color: TEXT_MID }}>Take a photo or choose from your device</p>
+            </div>
+            <button onClick={() => { setShowPhotoMenu(false); alert("Camera will open"); }} style={{ width: "100%", padding: "16px", background: PLUM, color: WHITE, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
+              📷 Snap Photo Now
+            </button>
+            <button onClick={() => { setShowPhotoMenu(false); alert("Gallery will open"); }} style={{ width: "100%", padding: "16px", background: SAGE, color: SAGE_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
+              🖼️ Choose From Album
+            </button>
+            <button onClick={() => setShowPhotoMenu(false)} style={{ width: "100%", padding: "16px", background: CREAM_DARK, color: TEXT_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Today's summary</div>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>Small improvement — great consistency.</div>
+        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 16 }}>Keep following your program; gentle core engagement may help sustain progress.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[["Week-over-week", "−0.2 cm", "3 sessions"], ["Month-over-month", "−0.4 cm", "4 weeks"]].map(([lbl, val, sub]) => (
+            <div key={lbl}><div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 4 }}>{lbl}</div><div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: PLUM }}>{val}</div><div style={{ fontSize: 12, color: TEXT_MID }}>{sub}</div></div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ background: SAGE, borderRadius: 14, padding: "14px 18px", display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <span style={{ fontSize: 13, color: TEXT_MID }}>All measurements and photos processed on-device. Nothing leaves your phone.</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        <PillButton label="Submit check-in" style={{ padding: "14px", borderRadius: 50 }} />
+        <PillButton label="Save draft" variant="outline" style={{ padding: "14px", borderRadius: 50 }} />
+      </div>
     </div>
   );
 }
@@ -2581,128 +2799,6 @@ function ProfileSurvey({ userData, setUserData }) {
       <button onClick={handleSave} style={{ width: "100%", padding: "15px", borderRadius: 50, background: saved ? SAGE_DARK : PLUM, color: WHITE, border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 24, transition: "background 0.2s" }}>
         {saved ? "✓ Plan personalized" : "Save & personalize my plan"}
       </button>
-    </div>
-  );
-}
-
-// ─── Check-in: daily section ────────────────────────────────────────────────
-function DailyCheckinSection() {
-  const [feeling, setFeeling] = useState("Pushing through");
-  const [journal, setJournal] = useState("");
-  const [gap, setGap] = useState("");
-  const [assessStep, setAssessStep] = useState(1); // 1-4
-  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
-  const feelings = ["Demotivated", "Overwhelmed", "Tired", "Pushing through", "Calm", "Happy", "Energized", "Stronger"];
-
-  const assessmentSteps = [
-    { num: 1, title: "Lie down comfortably", desc: "Find a flat surface. Lie on your back with knees bent and feet flat on the floor. Relax your shoulders.", icon: "knees" },
-    { num: 2, title: "Locate your separation", desc: "Place your fingers horizontally above the navel, between the two sides of your rectus abdominis muscle.", icon: "hands" },
-    { num: 3, title: "Measure your gap", desc: "Press gently and count how many fingers fit between the muscle bellies. Relax and repeat 2–3 times.", icon: "measure" },
-    { num: 4, title: "Record your baseline", desc: "Write down the number. This is your starting point. We'll track progress together from here.", icon: "record" },
-  ];
-
-  const currentStep = assessmentSteps[assessStep - 1];
-
-  return (
-    <div>
-      <div style={{ fontSize: 12, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>April 23 · Check-in</div>
-      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 20 }}>How are you today?</h2>
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>Self-assessment</div>
-          <span style={{ background: SAGE, padding: "4px 12px", borderRadius: 20, fontSize: 12, color: TEXT_MID }}>Step {assessStep} / 4</span>
-        </div>
-        <div style={{ textAlign: "center", marginBottom: 12 }}>
-          <svg width={80} height={60} viewBox="0 0 80 60"><circle cx={40} cy={14} r={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><ellipse cx={40} cy={42} rx={22} ry={10} fill="none" stroke={PLUM_LIGHT} strokeWidth={1.5}/><circle cx={40} cy={42} r={4} fill={SAGE_DARK}/></svg>
-          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Knees bent · Back flat</div>
-        </div>
-        <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>{currentStep.title}</h3>
-        <p style={{ fontSize: 14, color: TEXT_MID, lineHeight: 1.6, marginBottom: 16 }}>{currentStep.desc}</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 16 }}>
-          {[0, 1, 2, 3].map(i => <div key={i} style={{ width: i < assessStep ? 24 : 8, height: 4, borderRadius: 3, background: i < assessStep ? PLUM : CREAM_DARK, transition: "all 0.3s" }} />)}
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {assessStep > 1 && (
-            <button onClick={() => setAssessStep(assessStep - 1)} style={{ flex: 1, padding: "14px", borderRadius: 50, border: `1px solid ${BORDER}`, background: WHITE, fontSize: 14, fontWeight: 500, cursor: "pointer", color: TEXT_DARK }}>
-              ‹ Back
-            </button>
-          )}
-          <button onClick={() => assessStep < 4 ? setAssessStep(assessStep + 1) : null} style={{ flex: 1, padding: "14px", borderRadius: 50, background: assessStep === 4 ? SAGE : PLUM, color: WHITE, border: "none", fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-            {assessStep === 4 ? "✓ Complete" : "Next step ›"}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>How are you feeling?</div>
-          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Tap all that apply</div>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {feelings.map(f => { const sel = feeling === f; return <span key={f} onClick={() => setFeeling(f)} style={{ padding: "8px 16px", borderRadius: 20, cursor: "pointer", fontSize: 14, background: sel ? PLUM : WHITE, color: sel ? WHITE : TEXT_DARK, border: `1px solid ${sel ? PLUM : BORDER}`, fontFamily: "'DM Sans', sans-serif" }}>{f}</span>; })}
-        </div>
-      </div>
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase" }}>Your private journal</div>
-          <div style={{ fontSize: 12, color: TEXT_LIGHT }}>Only you can see this</div>
-        </div>
-        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 12 }}>A safe space to write whatever's on your heart today, mama.</p>
-        <textarea value={journal} onChange={e => setJournal(e.target.value)} placeholder="Today I feel..." style={{ width: "100%", minHeight: 100, border: "none", background: CREAM_DARK, borderRadius: 10, padding: "14px", fontSize: 14, color: TEXT_DARK, resize: "none", outline: "none", fontFamily: "'DM Sans', sans-serif", lineHeight: 1.6 }} />
-      </div>
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Abdominal measurement</div>
-        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 12 }}>Measure at the widest point above the navel.</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <input value={gap} onChange={e => setGap(e.target.value)} placeholder="Enter cm" style={{ flex: 1, padding: "13px 18px", borderRadius: 50, border: `1px solid ${BORDER}`, background: CREAM_DARK, fontSize: 15, color: TEXT_DARK, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
-          <span style={{ fontSize: 14, color: TEXT_MID }}>cm</span>
-        </div>
-        <div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 14 }}>Last: 3.2 cm</div>
-        <button onClick={() => setShowPhotoMenu(true)} style={{ width: "100%", background: SAGE, borderRadius: 10, padding: "12px 16px", border: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={SAGE_DARK} strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span style={{ fontSize: 13, color: TEXT_MID, fontFamily: "'DM Sans', sans-serif" }}>Attach a secure photo (on-device)</span>
-        </button>
-      </div>
-
-      {/* Photo menu modal */}
-      {showPhotoMenu && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 9999 }}>
-          <div style={{ width: "100%", background: WHITE, borderRadius: "20px 20px 0 0", padding: "20px", paddingBottom: 40 }}>
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: TEXT_DARK, marginBottom: 4 }}>Add measurement photo</h3>
-              <p style={{ fontSize: 13, color: TEXT_MID }}>Take a photo or choose from your device</p>
-            </div>
-            <button onClick={() => { setShowPhotoMenu(false); alert("Camera will open"); }} style={{ width: "100%", padding: "16px", background: PLUM, color: WHITE, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
-              📷 Snap Photo Now
-            </button>
-            <button onClick={() => { setShowPhotoMenu(false); alert("Gallery will open"); }} style={{ width: "100%", padding: "16px", background: SAGE, color: SAGE_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", marginBottom: 10, fontFamily: "'DM Sans', sans-serif" }}>
-              🖼️ Choose From Album
-            </button>
-            <button onClick={() => setShowPhotoMenu(false)} style={{ width: "100%", padding: "16px", background: CREAM_DARK, color: TEXT_DARK, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div style={{ background: WHITE, borderRadius: 14, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, color: TEXT_LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Today's summary</div>
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: TEXT_DARK, marginBottom: 8 }}>Small improvement — great consistency.</div>
-        <p style={{ fontSize: 14, color: TEXT_MID, marginBottom: 16 }}>Keep following your program; gentle core engagement may help sustain progress.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {[["Week-over-week", "−0.2 cm", "3 sessions"], ["Month-over-month", "−0.4 cm", "4 weeks"]].map(([lbl, val, sub]) => (
-            <div key={lbl}><div style={{ fontSize: 12, color: TEXT_LIGHT, marginBottom: 4 }}>{lbl}</div><div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, color: PLUM }}>{val}</div><div style={{ fontSize: 12, color: TEXT_MID }}>{sub}</div></div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-        <PillButton label="Submit check-in" style={{ padding: "14px", borderRadius: 50 }} />
-        <PillButton label="Save draft" variant="outline" style={{ padding: "14px", borderRadius: 50 }} />
-      </div>
     </div>
   );
 }
@@ -2890,7 +2986,7 @@ function PromiseBanner() {
 }
 
 // ─── Resources Tab ────────────────────────────────────────────────────────────
-function ResourcesTab({ onHowItWorks }) {
+function ResourcesTab({ onHowItWorks, onAbout }) {
   const [faqOpen, setFaqOpen] = useState(null);
   const articles = [
     { title: "Understanding Abdominal Separation: What is Diastasis Recti?", author: "Clinical Overview", read: "10 min read", tag: "ANATOMY" },
@@ -2918,7 +3014,7 @@ function ResourcesTab({ onHowItWorks }) {
       <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: TEXT_DARK, marginBottom: 20 }}>A quiet library, just for you.</h2>
 
       {/* How It Works banner — first thing */}
-      <div onClick={onHowItWorks} style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 16, padding: "22px 24px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, position: "relative", overflow: "hidden" }}>
+      <div onClick={onHowItWorks} style={{ background: `linear-gradient(135deg, ${PLUM} 0%, ${PLUM_DARK} 100%)`, borderRadius: 16, padding: "22px 24px", marginBottom: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", right: -20, top: -20, width: 100, height: 100, borderRadius: "50%", background: WHITE, opacity: 0.06 }} />
         <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={WHITE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
@@ -2928,6 +3024,16 @@ function ResourcesTab({ onHowItWorks }) {
           <div style={{ fontSize: 13, color: PLUM_LIGHT }}>3 simple steps · No tech skills needed</div>
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={PLUM_LIGHT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      {/* Our Story banner */}
+      <div onClick={() => onAbout && onAbout()} style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: "18px 20px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ flexShrink: 0 }}><KoreCrest size={36} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: TEXT_DARK, marginBottom: 2 }}>Our Story</div>
+          <div style={{ fontSize: 13, color: TEXT_MID }}>Why KORE exists — born out of lived experience</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_LIGHT} strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
 
       {/* Search */}
@@ -3379,6 +3485,7 @@ export default function App() {
   const [showSurvey, setShowSurvey] = useState(false); // moved into Check-in → Profile survey
 
   const [howItWorksFrom, setHowItWorksFrom] = useState("landing");
+  const [aboutFrom, setAboutFrom] = useState("landing"); // where the About page was opened from
 
   const goNext = () => { if (onboardStep < 2) setOnboardStep(onboardStep + 1); else setScreen("app"); };
   const goBack = () => { if (onboardStep > 1) setOnboardStep(onboardStep - 1); else setScreen("landing"); };
@@ -3386,6 +3493,9 @@ export default function App() {
   const goHowItWorksFromLanding = () => { setHowItWorksFrom("landing"); setScreen("howitworks"); };
   const goHowItWorksFromApp = () => { setHowItWorksFrom("app"); setScreen("howitworks"); };
   const exitHowItWorks = () => { if (howItWorksFrom === "app") { setScreen("app"); setActiveTab("resources"); } else { setScreen("landing"); } };
+  const goAboutFromLanding = () => { setAboutFrom("landing"); setScreen("about"); };
+  const goAboutFromApp = () => { setAboutFrom("app"); setScreen("about"); };
+  const exitAbout = () => { if (aboutFrom === "app") { setScreen("app"); } else { setScreen("landing"); } };
 
   const handleSurveyComplete = (surveyAnswers) => {
     setUserData({ ...userData, surveyAnswers });
@@ -3394,11 +3504,15 @@ export default function App() {
   };
 
   if (screen === "landing") return (
-    <><style>{fonts}{globalStyle}</style><Landing onStart={startOnboard} onHowItWorks={goHowItWorksFromLanding} /></>
+    <><style>{fonts}{globalStyle}</style><Landing onStart={startOnboard} onHowItWorks={goHowItWorksFromLanding} onAbout={goAboutFromLanding} /></>
   );
 
   if (screen === "howitworks") return (
     <><style>{fonts}{globalStyle}</style><HowItWorks onBack={exitHowItWorks} onBegin={startOnboard} backLabel={howItWorksFrom === "app" ? "Back to Resources" : "Back to Home"} /></>
+  );
+
+  if (screen === "about") return (
+    <><style>{fonts}{globalStyle}</style><AboutScreen onBack={exitAbout} backLabel={aboutFrom === "app" ? "Back to KORE" : "Back to Home"} /></>
   );
 
   if (screen === "plan") return (
@@ -3422,12 +3536,12 @@ export default function App() {
     practice: <PracticeTab userData={userData} />,
     checkin: <CheckinTab userData={userData} setUserData={setUserData} />,
     circle: <CircleTab />,
-    resources: <ResourcesTab onHowItWorks={goHowItWorksFromApp} />,
+    resources: <ResourcesTab onHowItWorks={goHowItWorksFromApp} onAbout={goAboutFromApp} />,
   };
 
   return (
     <><style>{fonts}{globalStyle}</style>
-    <AppShell activeTab={activeTab} setActiveTab={setActiveTab} onProfile={() => setScreen("profile")}>
+    <AppShell activeTab={activeTab} setActiveTab={setActiveTab} onProfile={() => setScreen("profile")} onAbout={goAboutFromApp}>
       {tabMap[activeTab]}
     </AppShell>
     </>
