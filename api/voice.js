@@ -1,20 +1,30 @@
-// api/voice.js — ElevenLabs TTS proxy (debug-friendly version)
+// api/voice.js — ElevenLabs TTS proxy (diagnostic + CORS version)
 //
-// Environment variables required (set in Vercel dashboard):
-//   ELEVENLABS_API_KEY   — your secret key (sk_...)
-//   ELEVENLABS_VOICE_ID  — the voice ID from THIS account
+// Env vars (Vercel → Settings → Environment Variables — REDEPLOY after changing):
+//   ELEVENLABS_API_KEY   — secret key (sk_...)
+//   ELEVENLABS_VOICE_ID  — a voice ID that exists on THIS account
 //
-// ⚠️  IMPORTANT: Vercel env vars only apply to deployments made AFTER
-//     the variable was added/changed. Always Redeploy after editing them.
-//
-// 🔍 DIAGNOSTIC MODE: open https://YOUR-APP.vercel.app/api/voice in a
-//     browser (a normal GET request) and it will tell you exactly what
-//     is wrong: bad key, blocked account, or voice ID not on this account.
+// 🔍 Open https://YOUR-APP.vercel.app/api/voice in a browser for a full
+//    diagnosis of key / voice / deployment problems.
+// 🌐 CORS enabled — the app can call this from ANY domain (local preview,
+//    artifact preview, etc.), not just the Vercel site itself.
+
+function setCors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
 
 export default async function handler(req, res) {
+  setCors(res);
+
+  // Preflight for cross-origin POSTs
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   const apiKey = (process.env.ELEVENLABS_API_KEY || "").trim();
-  // Fallback is "Rachel" — a default voice that exists on EVERY account,
-  // so audio still works even if the voice ID env var is wrong.
+  // Fallback "Rachel" — a default voice that exists on EVERY account.
   const voiceId = (process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM").trim();
 
   // ── DIAGNOSTIC: visit /api/voice in your browser ───────────────────────
@@ -23,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: false,
         problem: "ELEVENLABS_API_KEY is missing in this deployment.",
-        fix: "Check the env var exists in Vercel, then REDEPLOY (Deployments → ⋯ → Redeploy). Env vars do not apply to old deployments.",
+        fix: "The env var exists but this deployment predates it. Vercel → Deployments → ⋯ → Redeploy.",
       });
     }
     try {
@@ -37,7 +47,7 @@ export default async function handler(req, res) {
           problem: "ElevenLabs rejected the API key.",
           elevenlabs_status: check.status,
           elevenlabs_says: data,
-          fix: "If status is 401: the key is wrong, has extra spaces, or ElevenLabs blocked this account (look for 'detected_unusual_activity' — they block duplicate free accounts). If blocked, you need a paid starter plan or a genuinely different account.",
+          fix: "401 = wrong key, extra spaces, or account blocked (look for 'detected_unusual_activity' — duplicate free accounts get blocked; the $5 Starter plan unblocks you).",
         });
       }
       const voices = (data.voices || []).map(v => ({ name: v.name, voice_id: v.voice_id }));
@@ -48,8 +58,8 @@ export default async function handler(req, res) {
         usingVoiceId: voiceId,
         voiceFoundOnThisAccount: found,
         fix: found
-          ? "Everything looks good. If the app still uses the robot voice, hard-refresh the app page."
-          : "This voice ID does NOT exist on the account this key belongs to (Tolani probably lives on your old account). Copy one of the voice_ids below into the ELEVENLABS_VOICE_ID env var in Vercel, then Redeploy.",
+          ? "Backend is healthy. If the app still sounds robotic, the app isn't reaching this endpoint — point its fetch to this full URL and hard-refresh."
+          : "This voice ID is not on this account. Copy a voice_id from the list below into ELEVENLABS_VOICE_ID, then Redeploy.",
         voicesOnThisAccount: voices,
       });
     } catch (err) {
@@ -92,8 +102,6 @@ export default async function handler(req, res) {
     );
 
     if (!ttsResponse.ok) {
-      // Surface the REAL ElevenLabs error instead of a generic 502,
-      // and log it so it shows up in Vercel → Logs.
       const detail = await ttsResponse.text().catch(() => "");
       console.error("ElevenLabs error:", ttsResponse.status, detail);
       return res.status(502).json({
